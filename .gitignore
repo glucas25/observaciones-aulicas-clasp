@@ -1,0 +1,7 @@
+.clasp.json
+node_modules/
+.env
+coverage/
+dist/
+*.log
+

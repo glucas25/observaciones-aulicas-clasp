@@ -1,0 +1,12 @@
+{
+  "name": "visitas-aulicas-clasp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "MVP de visitas áulicas en Google Apps Script",
+  "scripts": {
+    "test": "node --test tests/unit/*.test.js",
+    "validate": "node scripts/validate-project.js"
+  },
+  "devDependencies": {}
+}
+

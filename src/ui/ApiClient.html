@@ -1,0 +1,2 @@
+const Api={call(name,payload={}){return new Promise((resolve,reject)=>{google.script.run.withSuccessHandler(r=>r&&r.ok?resolve(r.data):reject(r&&r.error?r.error:{message:'Sin respuesta del servidor.'})).withFailureHandler(e=>reject({message:e.message||'Falló la comunicación.'}))[name](payload);});}};
+
