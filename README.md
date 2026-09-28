@@ -24,7 +24,7 @@ Aplicación web interna implementada en Google Apps Script para registrar visita
    - `installDailyBackupTrigger()` para activar el respaldo diario.
 5. Sustituya las plantillas iniciales por las oficiales aprobadas, manteniendo los marcadores, y publique una versión inmutable de la Web App.
 
-Los pasos completos, propiedades y smoke test están en [la guía de despliegue](./docs/runbooks/DEPLOYMENT.md). El estado de ejecución y las aprobaciones externas pendientes están en [IMPLEMENTATION-STATUS.md](./docs/IMPLEMENTATION-STATUS.md).
+La secuencia completa, responsables, propiedades, catálogos, plantillas, despliegue, UAT, piloto y salida a producción está en [la guía detallada de implementación](./docs/GUIA-IMPLEMENTACION-PRODUCCION.md). El runbook resumido está en [la guía de despliegue](./docs/runbooks/DEPLOYMENT.md), y las aprobaciones pendientes en [IMPLEMENTATION-STATUS.md](./docs/IMPLEMENTATION-STATUS.md).
 
 ## Decisión de producto
 

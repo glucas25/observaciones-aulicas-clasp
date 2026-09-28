@@ -2,6 +2,8 @@
 
 Fecha de corte: 2026-09-28.
 
+Las instrucciones operativas para cerrar estas acciones están consolidadas en [`GUIA-IMPLEMENTACION-PRODUCCION.md`](./GUIA-IMPLEMENTACION-PRODUCCION.md).
+
 ## Entregado en el repositorio
 
 | Fase | Estado | Evidencia |
@@ -30,4 +32,3 @@ Las tres checks iniciales tienen versión `EVI-1.0-DRAFT` para hacer pruebas y d
 ## Limitación documentada
 
 Apps Script no incorpora una API nativa fiable para fusionar PDFs. El expediente se renderiza desde el mismo snapshot en una plantilla unificada, en orden 1–2–3–5. Esto mantiene identidad de datos y hash, pero la institución debe aprobar visualmente la plantilla unificada o autorizar un servicio interno de combinación binaria.
-
