@@ -3,6 +3,7 @@ var SheetSchema = (function () {
     SETTINGS: ['key','value','value_type','environment','description','updated_at','updated_by'],
     INSTITUTIONS: ['institution_id','institution_code','name','location','zone','district','circuit','address','default_shift','active','created_at','updated_at'],
     USERS: ['user_id','email','display_name','role','institution_id','active','created_at','updated_at','last_access_at'],
+    EVALUATOR_ASSIGNMENTS: ['assignment_id','evaluator_user_id','teacher_id','effective_from','effective_to','active','created_at','created_by'],
     TEACHERS: ['teacher_id','teacher_code','institution_id','identity_reference','full_name','email','active','created_at','updated_at'],
     RUBRIC_VERSIONS: ['rubric_version_id','version_code','name','effective_from','effective_to','status','source_document','approved_by','approved_at'],
     RUBRIC_CRITERIA: ['criterion_id','rubric_version_id','criterion_code','group_code','sort_order','title','descriptor_achieved','descriptor_in_progress','descriptor_beginning','allows_na','active'],

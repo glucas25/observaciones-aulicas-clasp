@@ -1,6 +1,6 @@
 # Respaldo y restauración
 
-`createBackup()` copia el spreadsheet con fecha/hora a una carpeta privada. `installDailyBackupTrigger()` instala un trigger diario a las 02:00 de la zona del proyecto. Revise mensualmente que la copia abra y conserve las 18 hojas.
+`createBackup()` copia el spreadsheet con fecha/hora a una carpeta privada. `installDailyBackupTrigger()` instala un trigger diario a las 02:00 de la zona del proyecto. Revise mensualmente que la copia abra y conserve las 19 hojas.
 
 Para restaurar:
 

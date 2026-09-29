@@ -36,3 +36,15 @@ function bootstrapAdmin(email, displayName) {
     institution_id: institution.institution_id, active: true, created_at: JsonUtil.now(), updated_at: JsonUtil.now()
   });
 }
+
+/**
+ * Punto de entrada sin argumentos para crear el primer administrador desde el
+ * editor de Apps Script. Usa la identidad de la cuenta que ejecuta la función.
+ */
+function bootstrapCurrentUserAsAdmin() {
+  var email = String(Session.getActiveUser().getEmail() || '').trim().toLowerCase();
+  if (!email) {
+    throw AppErrors.auth('No se pudo obtener el correo de la cuenta ejecutora. Use una cuenta institucional autorizada.');
+  }
+  return bootstrapAdmin(email, email);
+}

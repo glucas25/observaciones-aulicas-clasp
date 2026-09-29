@@ -5,14 +5,16 @@ var AdminService = (function () {
     SheetsRepository.upsert('INSTITUTIONS',['institution_id'],row); Audit.write(actor,'INSTITUTION_SAVED','INSTITUTION',row.institution_id,'',requestId,'SUCCESS','Institución guardada'); return row;
   }
   function saveUser(dto,requestId) {
-    var actor=Auth.requireRoles(['ADMIN']),role=String(dto.role||''); if(['ADMIN','EVALUATOR','VIEWER'].indexOf(role)<0) throw AppErrors.validation('Rol inválido.');
+    var actor=Auth.requireRoles(['ADMIN']),role=String(dto.role||''); if(['ADMIN','DIRECTIVE','EVALUATOR','TEACHER'].indexOf(role)<0) throw AppErrors.validation('Rol inválido.');
     var email=Validation.required(dto.email,'Correo',250).toLowerCase(),current=SheetsRepository.find('USERS','email',email),now=JsonUtil.now();
     var row={user_id:current?current.user_id:Utilities.getUuid(),email:email,display_name:Validation.required(dto.displayName,'Nombre',250),role:role,institution_id:Validation.required(dto.institutionId,'Institución',100),active:dto.active!==false,created_at:current?current.created_at:now,updated_at:now,last_access_at:current?current.last_access_at:''};
     SheetsRepository.upsert('USERS',['email'],row); Audit.write(actor,'USER_SAVED','USER',row.user_id,'',requestId,'SUCCESS','Usuario guardado'); return row;
   }
   function saveTeacher(dto,requestId) {
-    var actor=Auth.requireRoles(['ADMIN']),current=dto.teacherId?SheetsRepository.find('TEACHERS','teacher_id',dto.teacherId):null,now=JsonUtil.now();
-    var row={teacher_id:dto.teacherId||Utilities.getUuid(),teacher_code:dto.teacherCode||('DOC-'+Utilities.getUuid().slice(0,6).toUpperCase()),institution_id:Validation.required(dto.institutionId,'Institución',100),identity_reference:Validation.text(dto.identityReference,100),full_name:Validation.required(dto.fullName,'Nombre del docente',250),email:Validation.text(dto.email,250).toLowerCase(),active:dto.active!==false,created_at:current?current.created_at:now,updated_at:now};
+    var actor=Auth.requireRoles(['ADMIN']),current=dto.teacherId?SheetsRepository.find('TEACHERS','teacher_id',dto.teacherId):null,now=JsonUtil.now(),email=Validation.text(dto.email,250).toLowerCase();
+    var duplicate=email&&SheetsRepository.filter('TEACHERS',function(t){return String(t.email||'').trim().toLowerCase()===email&&String(t.teacher_id)!==String(dto.teacherId||'')&&String(t.active).toLowerCase()!=='false';})[0];
+    if(duplicate)throw AppErrors.validation('El correo ya pertenece a otro docente activo.');
+    var row={teacher_id:dto.teacherId||Utilities.getUuid(),teacher_code:dto.teacherCode||('DOC-'+Utilities.getUuid().slice(0,6).toUpperCase()),institution_id:Validation.required(dto.institutionId,'Institución',100),identity_reference:Validation.text(dto.identityReference,100),full_name:Validation.required(dto.fullName,'Nombre del docente',250),email:email,active:dto.active!==false,created_at:current?current.created_at:now,updated_at:now};
     SheetsRepository.upsert('TEACHERS',['teacher_id'],row); Audit.write(actor,'TEACHER_SAVED','TEACHER',row.teacher_id,'',requestId,'SUCCESS','Docente guardado'); return row;
   }
   function data() { Auth.requireRoles(['ADMIN']); return {users:SheetsRepository.all('USERS'),teachers:SheetsRepository.all('TEACHERS'),institutions:SheetsRepository.all('INSTITUTIONS'),audit:SheetsRepository.all('AUDIT_LOG').slice(-200).reverse()}; }

@@ -39,13 +39,19 @@ Solo configuración no secreta. Los secretos viven en propiedades protegidas.
 
 `user_id`, `email`, `display_name`, `role`, `institution_id`, `active`, `created_at`, `updated_at`, `last_access_at`.
 
-Roles: `ADMIN`, `EVALUATOR`, `VIEWER`.
+Roles: `ADMIN`, `DIRECTIVE`, `EVALUATOR`, `TEACHER`.
 
 ### `TEACHERS`
 
 `teacher_id`, `teacher_code`, `institution_id`, `identity_reference` opcional, `full_name`, `email` opcional, `active`, `created_at`, `updated_at`.
 
 Evitar cédula si no es necesaria. Si se usa, definir protección y retención.
+
+### `EVALUATOR_ASSIGNMENTS`
+
+`assignment_id`, `evaluator_user_id`, `teacher_id`, `effective_from`, `effective_to`, `active`, `created_at`, `created_by`.
+
+Se administra directamente en Sheets. Una fila activa autoriza a un usuario `DIRECTIVE` o `EVALUATOR` a crear una observación para ese docente durante la vigencia indicada. El servidor valida la relación; el filtro de la interfaz es solo una ayuda visual. No se permite la autoevaluación.
 
 ### `RUBRIC_VERSIONS`
 
@@ -126,6 +132,8 @@ INSTITUTIONS 1---N USERS
 INSTITUTIONS 1---N TEACHERS
 TEACHERS     1---N VISITS
 USERS        1---N VISITS (evaluator)
+USERS        1---N EVALUATOR_ASSIGNMENTS
+TEACHERS     1---N EVALUATOR_ASSIGNMENTS
 RUBRIC_VERSIONS 1---N RUBRIC_CRITERIA
 VISITS 1---N VISIT_GENERAL_RESPONSES
 VISITS 1---N VISIT_RUBRIC_RESPONSES

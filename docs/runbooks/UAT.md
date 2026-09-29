@@ -1,7 +1,11 @@
 # Checklist UAT
 
 - [ ] Referente pedagógico aprobó campos, textos, 45 descriptores y regla de No aplica.
-- [ ] Se probaron roles Admin, Evaluador, Consulta y usuario inactivo/no autorizado.
+- [ ] Se probaron roles Admin, Directivo, Evaluador, Docente y usuario inactivo/no autorizado.
+- [ ] Un directivo ve todas las visitas de su institución, pero no modifica las ajenas.
+- [ ] Evaluador y directivo solo crean visitas para asignaciones activas y vigentes.
+- [ ] Se bloquean docente no asignado, asignación vencida y autoevaluación.
+- [ ] Cada docente ve sus evaluaciones finalizadas recibidas, nunca los borradores.
 - [ ] Se recuperó un borrador parcial y se simuló conflicto de dos pestañas.
 - [ ] Se ejecutaron casos: todos logrados, niveles mixtos, desacuerdo, No aplica y Unicode largo.
 - [ ] Anexos 2 y 3 muestran exactamente las mismas 15 selecciones.

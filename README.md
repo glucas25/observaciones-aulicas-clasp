@@ -4,8 +4,8 @@ Aplicación web interna implementada en Google Apps Script para registrar visita
 
 ## Implementación disponible
 
-- Web App accesible para escritorio/tablet con roles `ADMIN`, `EVALUATOR` y `VIEWER`.
-- Esquema idempotente de 18 hojas, catálogos versionados y semilla de 15 criterios/45 descriptores.
+- Web App accesible para escritorio/tablet con roles `ADMIN`, `DIRECTIVE`, `EVALUATOR` y `TEACHER`.
+- Esquema idempotente de 19 hojas, catálogos versionados y semilla de 15 criterios/45 descriptores.
 - Borradores, control de versión optimista, estados, reapertura/anulación y auditoría.
 - Captura de Anexos 1, 2, 3 y 5, checks físicos y validaciones de cierre.
 - Snapshot SHA-256 inmutable y generación idempotente de cinco PDFs.
@@ -19,7 +19,7 @@ Aplicación web interna implementada en Google Apps Script para registrar visita
 3. Ejecute `npm test` y `npm run validate`; luego `clasp push`.
 4. En el editor de Apps Script ejecute, en este orden:
    - `setupProject()` para crear o validar el spreadsheet y sembrar catálogos.
-   - `bootstrapAdmin('correo@institucion.edu', 'Nombre')` para el primer administrador.
+   - `bootstrapCurrentUserAsAdmin()` para registrar a la cuenta ejecutora como primer administrador.
    - `createStarterTemplates()` para crear carpetas y plantillas iniciales.
    - `installDailyBackupTrigger()` para activar el respaldo diario.
 5. Sustituya las plantillas iniciales por las oficiales aprobadas, manteniendo los marcadores, y publique una versión inmutable de la Web App.

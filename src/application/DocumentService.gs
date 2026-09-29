@@ -3,7 +3,7 @@ var DocumentService = (function () {
   function snapshot_(visitId,dataVersion){var rows=SheetsRepository.filter('VISIT_SNAPSHOTS',function(s){return String(s.visit_id)===String(visitId)&&Number(s.data_version)===Number(dataVersion);});if(!rows.length)throw AppErrors.document('No existe snapshot para esta versión.');return rows[0];}
   function generate(visitId,type,requestId){
     if(TYPES.indexOf(type)<0)throw AppErrors.validation('Tipo de documento inválido.');
-    var actor=Auth.current(),visit=VisitService.raw(visitId);Auth.assertVisit(actor,visit,false);if([VisitState.values.FINALIZED,VisitState.values.DOCUMENTS].indexOf(visit.status)<0)throw AppErrors.validation('Finalice la evaluación antes de generar documentos.');
+    var actor=Auth.current(),visit=VisitService.raw(visitId);Auth.assertVisit(actor,visit,false);if(!Auth.canEditVisit(actor,visit))throw AppErrors.forbidden();if([VisitState.values.FINALIZED,VisitState.values.DOCUMENTS].indexOf(visit.status)<0)throw AppErrors.validation('Finalice la evaluación antes de generar documentos.');
     var config=AppConfig.validate(),snapshotRow=snapshot_(visitId,visit.data_version),idempotency=[visitId,visit.data_version,type,config.templateVersion,snapshotRow.snapshot_hash].join('|');
     var existing=SheetsRepository.filter('DOCUMENTS',function(d){return d.visit_id===visitId&&Number(d.data_version)===Number(visit.data_version)&&d.document_type===type&&d.template_version===config.templateVersion&&d.snapshot_hash===snapshotRow.snapshot_hash&&d.status==='READY'&&!d.superseded_at;})[0];
     if(existing)return Object.assign({},existing,{url:DriveApp.getFileById(existing.drive_file_id).getUrl(),reused:true});

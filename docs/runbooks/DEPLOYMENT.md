@@ -14,7 +14,7 @@ IA, desactivada por defecto: `AI_ENABLED`, `AI_PROVIDER=OPENAI`, `AI_MODEL`, `AI
 
 1. Cree proyectos separados para DEV, UAT y PROD; nunca copie datos reales a DEV.
 2. Configure `.clasp.json` local (está ignorado por Git), ejecute pruebas, validación y `clasp push`.
-3. Ejecute `setupProject()`, `bootstrapAdmin(...)` y `createStarterTemplates()`.
+3. Configure las Script Properties y ejecute `setupProject()`, `bootstrapCurrentUserAsAdmin()` y `createStarterTemplates()` con la misma cuenta institucional.
 4. Edite institución, usuarios, docentes y checks. Cambie la rúbrica a `ACTIVE` solo tras aprobación pedagógica.
 5. Reemplace las plantillas iniciales por copias oficiales con los mismos marcadores y suba `TEMPLATE_VERSION`.
 6. Compruebe que carpetas y archivos no tengan acceso público.

@@ -92,40 +92,37 @@ clasp push
 clasp open-script
 ```
 
-Resultado esperado: las pruebas pasan, el validador informa 18 hojas/15 criterios/45 descriptores y el editor muestra los archivos de `src`.
+Resultado esperado: las pruebas pasan, el validador informa 19 hojas/15 criterios/45 descriptores y el editor muestra los archivos de `src`.
 
 ### 4.3 Inicializar persistencia y administrador
 
-En el editor de Apps Script, seleccione y ejecute una vez:
+Primero configure `APP_ENV`, `APP_VERSION`, `TIMEZONE`, `RETENTION_DAYS`,
+`SUPPORT_EMAIL` y `AI_ENABLED` en **Configuración del proyecto > Propiedades
+de la secuencia de comandos**. Las funciones elegidas en el selector
+**Ejecutar** no reciben argumentos.
 
-```javascript
-setupProject({
-  properties: {
-    APP_ENV: 'DEV',
-    APP_VERSION: '1.0.0',
-    TIMEZONE: 'America/Guayaquil',
-    RETENTION_DAYS: '365',
-    SUPPORT_EMAIL: 'soporte@institucion.edu',
-    AI_ENABLED: 'false'
-  }
-});
-```
+Si ya ejecutó `setupProject` y se creó la hoja de cálculo, continúe con el paso
+2. Volver a ejecutarla es seguro mientras no se haya alterado el esquema.
 
-Cambie `DEV` por `UAT` o `PROD`. Autorice los scopes solicitados. La función crea el spreadsheet si no existe, registra `SPREADSHEET_ID`, crea las 18 hojas y ejecuta la semilla idempotente.
+1. Seleccione `setupProject` y pulse **Ejecutar**. Autorice los permisos. La
+   función crea o valida el spreadsheet, registra `SPREADSHEET_ID`, crea las 18
+   hojas y carga la semilla idempotente.
+2. Sin cambiar de cuenta, seleccione `bootstrapCurrentUserAsAdmin` y pulse
+   **Ejecutar**. La función agrega el correo de la cuenta ejecutora a `USERS`
+   con rol `ADMIN` y crea la institución provisional. Compruebe ambas filas en
+   las hojas `USERS` e `INSTITUTIONS`.
+3. Seleccione `createStarterTemplates` y pulse **Ejecutar**. Como la cuenta ya
+   es administradora, la función crea las tres carpetas, los cinco documentos
+   iniciales y registra sus IDs en Script Properties.
 
-Luego cree el primer administrador:
+Use `DEV`, `UAT` o `PROD` en `APP_ENV`. La función
+`bootstrapAdmin(email, displayName)` queda disponible para llamadas
+programáticas, pero no se puede invocar con argumentos desde el selector del
+editor. No agregue correos temporales al código fuente para evitar esa
+limitación.
 
-```javascript
-bootstrapAdmin('administrador@institucion.edu', 'Nombre del administrador');
-```
-
-Finalmente cree las carpetas y plantillas iniciales:
-
-```javascript
-createStarterTemplates();
-```
-
-Esta función registra los IDs de carpetas y los cinco IDs de plantilla en Script Properties. Ejecútela después de `bootstrapAdmin`, con la misma cuenta autorizada.
+Este proceso no publica la Web App ni crea una URL de acceso. La hoja creada es
+la persistencia de la aplicación. Publique la Web App siguiendo la sección 9.
 
 ## 5. Configurar Script Properties
 
@@ -214,22 +211,37 @@ Las plantillas iniciales solo sirven para pruebas técnicas; no son evidencia de
 7. Compare página por página contra las muestras aprobadas: datos, casillas, tablas, saltos, márgenes, logos, firmas y ausencia de marcadores.
 8. Guarde los PDFs anonimizados como golden files y registre aprobador/fecha.
 
-## 8. Configurar institución, usuarios y docentes
+## 8. Configurar institución, usuarios, docentes y asignaciones
 
-1. Abra la Web App con el administrador inicial.
-2. Complete los datos institucionales antes de crear visitas reales.
-3. Cargue usuarios con correo normalizado, rol e institución:
-   - `ADMIN`: configuración, reapertura, anulación y auditoría.
-   - `EVALUATOR`: crea y edita visitas propias/asignadas.
-   - `VIEWER`: consulta y reimpresión autorizada.
-4. Cargue docentes usando solo los datos necesarios; evite cédula si no está justificada.
-5. Desactive usuarios/docentes retirados en lugar de borrarlos.
-6. Pruebe una cuenta por rol y una cuenta inactiva.
-7. Revise trimestralmente la matriz de accesos y el propietario de triggers/despliegues.
+1. Abra la Web App con el administrador inicial y complete los datos institucionales.
+2. Cargue usuarios con correo normalizado, rol e institución:
+   - `ADMIN`: configuración, acceso total, reapertura, anulación y auditoría.
+   - `DIRECTIVE`: evalúa solo asignados, modifica solo sus visitas y consulta toda su institución en modo lectura.
+   - `EVALUATOR`: evalúa solo asignados y consulta sus visitas realizadas y recibidas.
+   - `TEACHER`: consulta únicamente sus evaluaciones finalizadas recibidas.
+3. Cargue todos los docentes en `TEACHERS`. Para consultar evaluaciones recibidas, el correo debe coincidir exactamente con `USERS.email`. Un correo no puede pertenecer a dos docentes activos.
+4. Ejecute nuevamente `setupProject()` después de actualizar el código. Añadirá `EVALUATOR_ASSIGNMENTS` sin borrar datos existentes.
+5. En `EVALUATOR_ASSIGNMENTS`, cree una fila por relación evaluador-docente:
+
+| Columna | Contenido |
+|---|---|
+| `assignment_id` | identificador único, por ejemplo `ASG-0001` |
+| `evaluator_user_id` | valor de `USERS.user_id`, no el correo |
+| `teacher_id` | valor de `TEACHERS.teacher_id`, no el nombre |
+| `effective_from` | fecha inicial `YYYY-MM-DD`, opcional |
+| `effective_to` | fecha final `YYYY-MM-DD`, opcional |
+| `active` | `TRUE` o `FALSE` |
+| `created_at` | fecha/hora ISO 8601 |
+| `created_by` | `user_id` del administrador que autoriza |
+
+6. El selector **Nueva evaluación** muestra solo docentes asignados. El servidor vuelve a validar asignación, vigencia, institución y prohibición de autoevaluación.
+7. Desactive usuarios, docentes y asignaciones retirados en lugar de borrarlos.
+8. Pruebe una cuenta por rol: el directivo debe ver toda su institución sin editar visitas ajenas; evaluador y docente no deben ver borradores recibidos.
+9. Revise trimestralmente asignaciones, vigencias y propietarios de despliegues y triggers.
 
 ## 9. Publicar la Web App
 
-El manifiesto actual usa `USER_DEPLOYING` y acceso `ANYONE` (cualquier usuario autenticado); cada endpoint sigue exigiendo correo activo en `USERS`. Si toda la institución pertenece al mismo Workspace, valore cambiar `access` a `DOMAIN` antes de PROD. Nunca use acceso anónimo.
+El manifiesto usa `USER_DEPLOYING` y acceso `DOMAIN`: solo las cuentas autenticadas del mismo Google Workspace pueden abrir la Web App. Cada endpoint exige además que el correo esté activo en `USERS`. Esta restricción es necesaria cuando el administrador del dominio inhabilita el acceso `ANYONE`; usuarios externos al dominio no podrán acceder aunque estén registrados en la aplicación.
 
 La identidad de ejecución determina qué cuenta accede a Sheets/Drive. Google describe las opciones y sus implicaciones en <https://developers.google.com/apps-script/guides/web> y <https://developers.google.com/apps-script/manifest/web-app-api-executable>.
 
@@ -238,7 +250,7 @@ La identidad de ejecución determina qué cuenta accede a Sheets/Drive. Google d
 1. En Apps Script seleccione **Implementar > Nueva implementación**.
 2. Tipo: **Aplicación web**.
 3. Ejecute como la cuenta técnica que posee o administra las carpetas.
-4. Restrinja el acceso al dominio cuando sea viable; de lo contrario, usuarios autenticados + allowlist.
+4. En **Quién tiene acceso**, seleccione **Cualquier usuario de su dominio**. Si esa opción no aparece, solicite al administrador de Workspace que habilite las Web Apps internas para la unidad organizativa de la cuenta técnica.
 5. Autorice scopes y copie URL/deployment ID al registro del ambiente.
 6. No use una implementación HEAD para producción.
 
@@ -247,7 +259,7 @@ La identidad de ejecución determina qué cuenta accede a Sheets/Drive. Google d
 ```powershell
 clasp push
 clasp version "v1.0.0 - UAT aprobado"
-clasp deploy NUMERO_DE_VERSION "PROD v1.0.0"
+clasp deploy -V NUMERO_DE_VERSION -d "PROD v1.0.0"
 clasp deployments
 ```
 
@@ -255,7 +267,7 @@ Para actualizar un deployment existente:
 
 ```powershell
 clasp version "v1.0.1 - corrección"
-clasp redeploy DEPLOYMENT_ID NUMERO_DE_VERSION "PROD v1.0.1"
+clasp redeploy -V NUMERO_DE_VERSION -d "PROD v1.0.1" DEPLOYMENT_ID
 ```
 
 Registre versión de Git, versión Apps Script, deployment ID, URL, fecha, ejecutor y aprobadores.
@@ -273,7 +285,7 @@ El trigger ejecuta `createBackup()` diariamente. Los triggers instalables siempr
 Validación obligatoria:
 
 1. Ejecute manualmente `createBackup()`.
-2. Abra la copia y verifique las 18 hojas, conteos y snapshots.
+2. Abra la copia y verifique las 19 hojas, conteos y snapshots.
 3. Restrinja la carpeta de backups.
 4. Pruebe una restauración en UAT siguiendo `docs/runbooks/BACKUP-RESTORE.md`.
 5. Registre duración, responsable, archivo restaurado y resultado.
@@ -283,6 +295,9 @@ Validación obligatoria:
 Ejecute `docs/runbooks/UAT.md` con datos sintéticos. Como mínimo:
 
 - acceso autorizado, inactivo y no autorizado;
+- matriz de roles: administrador total, directivo supervisor de solo lectura sobre visitas ajenas, evaluador propietario y docente receptor;
+- asignación vigente, vencida, inactiva, docente no asignado y bloqueo de autoevaluación;
+- separación entre evaluaciones realizadas y recibidas, ocultando al docente los borradores recibidos;
 - guardado/recuperación y conflicto de dos pestañas;
 - seis criterios completos y desacuerdo sin argumento;
 - 15 criterios, todos los niveles y No aplica;

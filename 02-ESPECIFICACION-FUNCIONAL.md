@@ -2,19 +2,19 @@
 
 ## 1. Actores y permisos
 
-| Capacidad | Administrador | Evaluador | Consulta |
-|---|:---:|:---:|:---:|
-| Configurar institución, usuarios y docentes | sí | no | no |
-| Gestionar catálogos, rúbrica y plantillas | sí | no | no |
-| Crear evaluación | sí | sí | no |
-| Editar borrador propio | sí | sí | no |
-| Ver evaluaciones | todas | propias o asignadas | autorizadas |
-| Finalizar | sí | propia/asignada | no |
-| Reabrir finalizada | sí, con motivo | no | no |
-| Generar/reimprimir PDF | sí | autorizadas | autorizadas |
-| Ver auditoría | sí | propia resumida | no |
+| Capacidad | `ADMIN` | `DIRECTIVE` | `EVALUATOR` | `TEACHER` |
+|---|:---:|:---:|:---:|:---:|
+| Configurar institución, usuarios y docentes | sí | no | no | no |
+| Gestionar catálogos, plantillas y asignaciones | sí | no | no | no |
+| Crear evaluación | cualquier docente activo | solo asignados | solo asignados | no |
+| Editar/finalizar | todas, según estado | solo las creadas por él | solo las creadas por él | no |
+| Ver evaluaciones recibidas | todas | finalizadas | finalizadas | finalizadas |
+| Supervisar la institución | todas | todas, solo lectura | no | no |
+| Reabrir/anular y administrar | sí | no | no | no |
 
-La autorización se aplica en servidor; ocultar botones no es una medida de seguridad.
+Una persona que evalúa y también imparte clases existe simultáneamente en `USERS` y `TEACHERS`, vinculada por el mismo correo normalizado. El rol `DIRECTIVE` no equivale a administrador: supervisa su institución, pero solo modifica las visitas que él creó para docentes asignados.
+
+La autorización se aplica en servidor; ocultar botones o filtrar el selector no es una medida de seguridad.
 
 ## 2. Flujo de estados
 
@@ -42,6 +42,10 @@ BORRADOR -> EN_REVISION -> FINALIZADA -> DOCUMENTOS_GENERADOS
 - **RF-002** Permitir al administrador mantener usuarios, roles, docentes e institución.
 - **RF-003** Desactivar registros sin borrarlos cuando ya estén referenciados.
 - **RF-004** Cargar rúbrica, descriptores, checks y plantillas desde catálogos versionados.
+- **RF-005** Mantener asignaciones evaluador-docente en `EVALUATOR_ASSIGNMENTS`, con vigencia y estado activo.
+- **RF-006** Mostrar y aceptar al crear una visita únicamente docentes asignados al evaluador para la fecha indicada.
+- **RF-007** Vincular la cuenta con su registro docente por correo único normalizado y mostrar por separado evaluaciones realizadas y recibidas finalizadas.
+- **RF-008** Permitir al directivo consultar todas las visitas de su institución, sin modificar las creadas por otros.
 
 ### Evaluación
 

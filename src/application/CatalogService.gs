@@ -5,7 +5,18 @@ var CatalogService = (function () {
   function getAll() {
     var user = Auth.current();
     var teachers = active_('TEACHERS');
-    if (user.role !== 'ADMIN') teachers = teachers.filter(function (t) { return String(t.institution_id) === String(user.institution_id); });
+    if (user.role !== 'ADMIN') {
+      var assigned = {};
+      var today = new Date().toISOString().slice(0,10);
+      active_('EVALUATOR_ASSIGNMENTS').forEach(function (row) {
+        if (String(row.evaluator_user_id) === String(user.user_id) && (!row.effective_from || String(row.effective_from).slice(0,10) <= today) && (!row.effective_to || String(row.effective_to).slice(0,10) >= today)) assigned[String(row.teacher_id)] = true;
+      });
+      teachers = teachers.filter(function (teacher) {
+        return assigned[String(teacher.teacher_id)] &&
+          String(teacher.institution_id) === String(user.institution_id) &&
+          String(teacher.email || '').trim().toLowerCase() !== String(user.email || '').trim().toLowerCase();
+      });
+    }
     return {
       teachers: teachers,
       institutions: active_('INSTITUTIONS'),
@@ -17,4 +28,3 @@ var CatalogService = (function () {
   }
   return { getAll: getAll };
 })();
-

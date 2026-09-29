@@ -3,7 +3,7 @@ var ApiController = (function () {
   return {invoke:invoke};
 })();
 
-function apiBootstrap(){return ApiController.invoke(function(){var user=Auth.current();return {user:{userId:user.user_id,email:user.email,displayName:user.display_name,role:user.role},catalogs:CatalogService.getAll(),visits:VisitService.list({limit:100}),app:{version:AppConfig.get().version,environment:AppConfig.get().environment}};});}
+function apiBootstrap(){return ApiController.invoke(function(){var user=Auth.current();return {user:{userId:user.user_id,email:user.email,displayName:user.display_name,role:user.role,teacherId:(Auth.teacherForUser(user)||{}).teacher_id||''},catalogs:CatalogService.getAll(),visits:VisitService.list({limit:100}),app:{version:AppConfig.get().version,environment:AppConfig.get().environment}};});}
 function apiListVisits(payload){return ApiController.invoke(function(p){return VisitService.list(p.filters);},payload);}
 function apiGetVisit(payload){return ApiController.invoke(function(p){return VisitService.get(p.visitId);},payload);}
 function apiCreateVisit(payload){return ApiController.invoke(function(p,r){return VisitService.create(p.visit,r);},payload);}
