@@ -1,5 +1,21 @@
 var ApiController = (function () {
-  function invoke(action,payload){var requestId=Utilities.getUuid();try{var data=action(payload||{},requestId);return {ok:true,data:data,error:null,requestId:requestId,serverTime:JsonUtil.now()};}catch(e){console.error(requestId+' '+(e.stack||e.message));var known=e&&e.code;return {ok:false,data:null,error:{code:known?e.code:'INTERNAL_ERROR',message:known?e.message:'Ocurrió un error inesperado. Use el identificador de solicitud para soporte.',details:known?e.details:null},requestId:requestId,serverTime:JsonUtil.now()};}}
+  function invoke(action,payload){
+    var requestId=Utilities.getUuid();
+    try {
+      var data=action(payload||{},requestId);
+      return {ok:true,data:data,error:null,requestId:requestId,serverTime:JsonUtil.now()};
+    } catch(e) {
+      console.error(requestId+' '+(e.stack||e.message));
+      var known=e&&e.code;
+      var errObj;
+      try {
+        errObj={ok:false,data:null,error:{code:known?e.code:'INTERNAL_ERROR',message:known?e.message:'Ocurrió un error inesperado. Use el identificador de solicitud para soporte.',details:known?e.details:null},requestId:requestId,serverTime:JsonUtil.now()};
+      } catch(e2) {
+        errObj={ok:false,data:null,error:{code:'INTERNAL_ERROR',message:'Error interno del servidor.',details:null},requestId:requestId,serverTime:''};
+      }
+      return errObj;
+    }
+  }
   return {invoke:invoke};
 })();
 

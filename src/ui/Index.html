@@ -4,15 +4,16 @@
   <base target="_top">
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <?!= include('Styles'); ?>
+  <?!= include('ui/Styles'); ?>
 </head>
 <body>
   <a class="skip" href="#main">Saltar al contenido</a>
   <header><div><h1>Visitas Áulicas</h1><small id="environment"></small></div><div id="identity"></div></header>
   <nav id="nav" hidden><button data-view="list">Evaluaciones</button><button data-view="editor">Nueva evaluación</button><button id="admin-nav" data-view="admin" hidden>Administración</button></nav>
   <main id="main"><div id="notice" role="status" aria-live="polite"></div><section id="loading"><p>Cargando aplicación…</p></section><section id="content" hidden></section></main>
-  <script><?!= include('ApiClient'); ?></script>
-  <script><?!= include('App'); ?></script>
+  <script><?!= include('ui/ApiClient'); ?></script>
+  <script><?!= include('ui/App'); ?></script>
 </body>
 </html>
+
 

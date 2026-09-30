@@ -15,6 +15,16 @@ var AdminService = (function () {
     var row={teacher_id:dto.teacherId||Utilities.getUuid(),teacher_code:dto.teacherCode||('DOC-'+Utilities.getUuid().slice(0,6).toUpperCase()),institution_id:Validation.required(dto.institutionId,'Institución',100),identity_reference:Validation.text(dto.identityReference,100),full_name:Validation.required(dto.fullName,'Nombre del docente',250),email:Validation.text(dto.email,250).toLowerCase(),active:dto.active!==false,created_at:current?current.created_at:now,updated_at:now};
     SheetsRepository.upsert('TEACHERS',['teacher_id'],row); Audit.write(actor,'TEACHER_SAVED','TEACHER',row.teacher_id,'',requestId,'SUCCESS','Docente guardado'); return row;
   }
-  function data() { Auth.requireRoles(['ADMIN']); return {users:SheetsRepository.all('USERS'),teachers:SheetsRepository.all('TEACHERS'),institutions:SheetsRepository.all('INSTITUTIONS'),audit:SheetsRepository.all('AUDIT_LOG').slice(-200).reverse()}; }
+  function data() {
+    Auth.requireRoles(['ADMIN']);
+    var auditRows = [];
+    try { auditRows = SheetsRepository.all('AUDIT_LOG').slice(-200).reverse(); } catch(e) { console.warn('AUDIT_LOG unavailable: ' + e.message); }
+    return {
+      users: SheetsRepository.all('USERS'),
+      teachers: SheetsRepository.all('TEACHERS'),
+      institutions: SheetsRepository.all('INSTITUTIONS'),
+      audit: auditRows
+    };
+  }
   return {saveInstitution:saveInstitution,saveUser:saveUser,saveTeacher:saveTeacher,data:data};
 })();
