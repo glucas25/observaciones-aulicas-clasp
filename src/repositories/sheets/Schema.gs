@@ -17,6 +17,7 @@ var SheetSchema = (function () {
     DOCUMENTS: ['document_id','visit_id','data_version','document_type','template_version','snapshot_hash','status','drive_file_id','file_name','mime_type','size_bytes','generated_at','generated_by','superseded_at','error_code'],
     DOCUMENT_JOBS: ['job_id','idempotency_key','visit_id','data_version','document_type','status','attempt_count','started_at','completed_at','last_error_code','request_id'],
     AUDIT_LOG: ['event_id','occurred_at','actor_user_id','actor_email','actor_role','action','entity_type','entity_id','data_version','request_id','result','message','metadata_json'],
+    EVALUATOR_ASSIGNMENTS: ['assignment_id','evaluator_user_id','teacher_id','effective_from','effective_to','active','created_at','created_by'],
     SEQUENCES: ['sequence_name','year','last_value','updated_at']
   };
   return { all: sheets, names: function () { return Object.keys(sheets); } };

@@ -1,12 +1,18 @@
 var SheetsRepository = (function () {
+  var _ss = null;
+  var _sheets = {};
   function spreadsheet_() {
+    if (_ss) return _ss;
     var id = AppConfig.get().spreadsheetId;
     if (!id) throw AppErrors.validation('Configure SPREADSHEET_ID antes de usar la aplicación.');
-    return SpreadsheetApp.openById(id);
+    _ss = SpreadsheetApp.openById(id);
+    return _ss;
   }
   function sheet_(name) {
+    if (_sheets[name]) return _sheets[name];
     var sheet = spreadsheet_().getSheetByName(name);
     if (!sheet) throw AppErrors.notFound('La hoja ' + name);
+    _sheets[name] = sheet;
     return sheet;
   }
   function header_(sheet) {
@@ -32,6 +38,7 @@ var SheetsRepository = (function () {
   function append(name, object) {
     var sheet = sheet_(name), headers = header_(sheet);
     sheet.appendRow(headers.map(function (h) { return Validation.safeCell(object[h]); }));
+    _sheets[name] = null; // invalida cache tras escritura
     return object;
   }
   function upsert(name, keyFields, object) {
@@ -46,6 +53,7 @@ var SheetsRepository = (function () {
     var values = headers.map(function (h) { return Validation.safeCell(object[h]); });
     if (rowIndex < 0) sheet.appendRow(values);
     else sheet.getRange(rowIndex, 1, 1, values.length).setValues([values]);
+    _sheets[name] = null; // invalida cache tras escritura
     return object;
   }
   function removeWhere(name, predicate) {
@@ -54,6 +62,7 @@ var SheetsRepository = (function () {
     var kept = sheet.getRange(2, 1, last - 1, headers.length).getValues().filter(function (r) { return !predicate(toObject_(headers, r)); });
     sheet.getRange(2, 1, last - 1, headers.length).clearContent();
     if (kept.length) sheet.getRange(2, 1, kept.length, headers.length).setValues(kept);
+    _sheets[name] = null; // invalida cache tras escritura
   }
   function nextSequence(name, year) {
     var row = find('SEQUENCES', 'sequence_name', name);
@@ -63,4 +72,6 @@ var SheetsRepository = (function () {
   }
   return { spreadsheet: spreadsheet_, all: all, find: find, filter: filter, append: append, upsert: upsert, removeWhere: removeWhere, nextSequence: nextSequence };
 })();
+
+
 
