@@ -36,13 +36,17 @@ var Validation = (function () {
   }
   function validateForFinalization(aggregate) {
     validateVisitDraft(aggregate);
+    if (!aggregate.shift) aggregate.shift = 'Matutina';
     var labels = {
       visitDate: 'Fecha', teacherId: 'Docente', gradeCourse: 'Curso', subject: 'Asignatura',
-      contentTopic: 'Contenido', shift: 'Jornada', observationRecord: 'Registro de observación',
+      contentTopic: 'Contenido / Tema',
       strengths: 'Fortalezas', improvements: 'Aspectos a mejorar',
       directiveCommitments: 'Compromiso directivo', teacherCommitments: 'Compromiso docente'
     };
-    Object.keys(labels).forEach(function (key) { required(aggregate[key], labels[key], key === 'observationRecord' ? 12000 : 5000); });
+    Object.keys(labels).forEach(function (key) { required(aggregate[key], labels[key], 5000); });
+    if (aggregate.observationRecord != null && aggregate.observationRecord !== '') {
+      text(aggregate.observationRecord, 12000);
+    }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(String(aggregate.visitDate)) || isNaN(new Date(aggregate.visitDate + 'T00:00:00').getTime())) throw AppErrors.validation('La fecha de visita no es válida.');
     var today = new Date(); today.setHours(23,59,59,999);
     if (new Date(aggregate.visitDate + 'T00:00:00') > today) throw AppErrors.validation('La fecha de visita no puede ser futura.');

@@ -8,18 +8,39 @@ var Auth = (function () {
     user.email = email;
     return user;
   }
+  function userRoles_(user) {
+    return String(user.role || '').split(',').map(function (r) { return r.trim().toUpperCase(); });
+  }
+  function hasRole(user, role) {
+    var roles = userRoles_(user);
+    return roles.indexOf('ADMIN') >= 0 || roles.indexOf(String(role).toUpperCase()) >= 0;
+  }
   function requireRoles(roles) {
     var user = current();
-    if (roles.indexOf(String(user.role)) < 0) throw AppErrors.forbidden();
+    var userRoles = userRoles_(user);
+    var has = userRoles.indexOf('ADMIN') >= 0 || roles.some(function (r) { return userRoles.indexOf(String(r).toUpperCase()) >= 0; });
+    if (!has) throw AppErrors.forbidden();
     return user;
   }
   function canAccessVisit(user, visit) {
-    return user.role === 'ADMIN' || user.role === 'VIEWER' || String(visit.evaluator_user_id) === String(user.user_id);
+    var userRoles = userRoles_(user);
+    if (userRoles.indexOf('ADMIN') >= 0 || userRoles.indexOf('VIEWER') >= 0) return true;
+    if (String(visit.evaluator_user_id) === String(user.user_id)) return true;
+    if (visit.co_evaluator_user_id && String(visit.co_evaluator_user_id) === String(user.user_id)) return true;
+    if (String(visit.teacher_id) === String(user.user_id)) return true;
+    return false;
   }
   function assertVisit(user, visit, edit) {
     if (!canAccessVisit(user, visit)) throw AppErrors.forbidden();
-    if (edit && user.role === 'VIEWER') throw AppErrors.forbidden();
+    var userRoles = userRoles_(user);
+    if (edit) {
+      if (userRoles.indexOf('ADMIN') >= 0) return;
+      if (userRoles.indexOf('VIEWER') >= 0) throw AppErrors.forbidden();
+      var isLead = String(visit.evaluator_user_id) === String(user.user_id);
+      var isCo = visit.co_evaluator_user_id && String(visit.co_evaluator_user_id) === String(user.user_id);
+      if (!isLead && !isCo) throw AppErrors.forbidden();
+    }
   }
-  return { current: current, requireRoles: requireRoles, assertVisit: assertVisit };
+  return { current: current, requireRoles: requireRoles, assertVisit: assertVisit, canAccessVisit: canAccessVisit, hasRole: hasRole };
 })();
 

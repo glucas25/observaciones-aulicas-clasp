@@ -13,7 +13,7 @@ for(const html of ['App.html','ApiClient.html'])new vm.Script(fs.readFileSync(pa
 const schemaSource=fs.readFileSync(path.join(root,'src','repositories','sheets','Schema.gs'),'utf8');
 const schemaContext={};vm.createContext(schemaContext);vm.runInContext(schemaSource,schemaContext);
 const names=schemaContext.SheetSchema.names();
-if(names.length!==18)throw new Error(`Se esperaban 18 hojas; se hallaron ${names.length}.`);
+if(names.length!==19)throw new Error(`Se esperaban 19 hojas; se hallaron ${names.length}.`);
 const seedSource=fs.readFileSync(path.join(root,'src','bootstrap','Seed.gs'),'utf8');
 const seedContext={};vm.createContext(seedContext);vm.runInContext(seedSource,seedContext);
 if(seedContext.SeedData.rubric.length!==15)throw new Error('La semilla debe tener 15 criterios.');
