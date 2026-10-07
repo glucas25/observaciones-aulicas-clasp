@@ -1,12 +1,15 @@
 var DocumentService = (function () {
   var TYPES=['ANNEX_1','ANNEX_2','ANNEX_3','ANNEX_5','FULL_PACKAGE'];
   function snapshot_(visitId,dataVersion){var rows=SheetsRepository.filter('VISIT_SNAPSHOTS',function(s){return String(s.visit_id)===String(visitId)&&Number(s.data_version)===Number(dataVersion);});if(!rows.length)throw AppErrors.document('No existe snapshot para esta versión.');return rows[0];}
-  function generate(visitId,type,requestId){
+  function generate(visitId,type,options,requestId){
+    if(typeof options==='string'&&!requestId){requestId=options;options={};}
+    options=options||{};var force=!!options.force;
     if(TYPES.indexOf(type)<0)throw AppErrors.validation('Tipo de documento inválido.');
     var actor=Auth.current(),visit=VisitService.raw(visitId);Auth.assertVisit(actor,visit,false);if([VisitState.values.FINALIZED,VisitState.values.DOCUMENTS].indexOf(visit.status)<0)throw AppErrors.validation('Finalice la evaluación antes de generar documentos.');
-    var config=AppConfig.validate(),snapshotRow=snapshot_(visitId,visit.data_version),idempotency=[visitId,visit.data_version,type,config.templateVersion,snapshotRow.snapshot_hash].join('|');
+    var config=AppConfig.validate(),snapshotRow=snapshot_(visitId,visit.data_version),idempotency=[visitId,visit.data_version,type,config.templateVersion,snapshotRow.snapshot_hash,force?Utilities.getUuid():''].join('|');
     var existing=SheetsRepository.filter('DOCUMENTS',function(d){return d.visit_id===visitId&&Number(d.data_version)===Number(visit.data_version)&&d.document_type===type&&d.template_version===config.templateVersion&&d.snapshot_hash===snapshotRow.snapshot_hash&&d.status==='READY'&&!d.superseded_at;})[0];
-    if(existing)return Object.assign({},existing,{url:DriveApp.getFileById(existing.drive_file_id).getUrl(),reused:true});
+    if(!force&&existing)return Object.assign({},existing,{url:DriveApp.getFileById(existing.drive_file_id).getUrl(),reused:true});
+    if(force&&existing){existing.superseded_at=JsonUtil.now();SheetsRepository.upsert('DOCUMENTS',['document_id'],existing);}
     var job=SheetsRepository.find('DOCUMENT_JOBS','idempotency_key',idempotency)||{job_id:Utilities.getUuid(),idempotency_key:idempotency,visit_id:visitId,data_version:visit.data_version,document_type:type,attempt_count:0,request_id:requestId};job.status='GENERATING';job.attempt_count=Number(job.attempt_count||0)+1;job.started_at=JsonUtil.now();job.last_error_code='';SheetsRepository.upsert('DOCUMENT_JOBS',['idempotency_key'],job);
     var name=visit.visit_code+'_v'+visit.data_version+'_'+type+'.pdf';
     try{var snapshot=JSON.parse(snapshotRow.snapshot_json),file=DocsGateway.render(config.templateIds[type],name,snapshot,type,config.tempFolderId,config.outputFolderId),record={document_id:Utilities.getUuid(),visit_id:visitId,data_version:visit.data_version,document_type:type,template_version:config.templateVersion,snapshot_hash:snapshotRow.snapshot_hash,status:'READY',drive_file_id:file.getId(),file_name:name,mime_type:MimeType.PDF,size_bytes:file.getSize(),generated_at:JsonUtil.now(),generated_by:actor.user_id,superseded_at:'',error_code:''};SheetsRepository.append('DOCUMENTS',record);job.status='READY';job.completed_at=JsonUtil.now();SheetsRepository.upsert('DOCUMENT_JOBS',['idempotency_key'],job);Audit.write(actor,'DOCUMENT_GENERATED','VISIT',visitId,visit.data_version,requestId,'SUCCESS','Documento generado',{type:type,snapshotHash:snapshotRow.snapshot_hash});

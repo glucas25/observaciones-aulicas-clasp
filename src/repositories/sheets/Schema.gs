@@ -2,13 +2,13 @@ var SheetSchema = (function () {
   var sheets = {
     SETTINGS: ['key','value','value_type','environment','description','updated_at','updated_by'],
     INSTITUTIONS: ['institution_id','institution_code','name','location','zone','district','circuit','address','default_shift','active','created_at','updated_at'],
-    USERS: ['user_id','email','display_name','role','institution_id','active','created_at','updated_at','last_access_at'],
+    USERS: ['user_id','email','display_name','role','institution_id','active','created_at','updated_at','last_access_at','position','user_code','identity_reference'],
     TEACHERS: ['teacher_id','teacher_code','institution_id','identity_reference','full_name','email','active','created_at','updated_at','user_id'],
     RUBRIC_VERSIONS: ['rubric_version_id','version_code','name','effective_from','effective_to','status','source_document','approved_by','approved_at'],
     RUBRIC_CRITERIA: ['criterion_id','rubric_version_id','criterion_code','group_code','sort_order','title','descriptor_achieved','descriptor_in_progress','descriptor_beginning','allows_na','active'],
     GENERAL_CRITERIA: ['general_criterion_id','catalog_version','criterion_code','sort_order','text','active'],
     EVIDENCE_CHECK_TYPES: ['check_type_id','catalog_version','check_code','label','sort_order','active'],
-    VISITS: ['visit_id','visit_code','institution_id','teacher_id','evaluator_user_id','status','data_version','row_version','rubric_version_id','general_catalog_version','evidence_catalog_version','form_number','visit_date','class_start_time','shift','teacher_name_snapshot','institution_name_snapshot','location','zone','district','circuit','institution_address','grade_course','parallel','sublevel','area','subject','content_topic','student_count','observation_record','strengths','improvements','directive_commitments','teacher_commitments','final_observations','ai_used','reviewed_by_human','created_at','created_by','updated_at','updated_by','finalized_at','finalized_by','reopened_at','reopened_by','reopen_reason','annulled_at','annulled_by','annul_reason'],
+    VISITS: ['visit_id','visit_code','institution_id','teacher_id','evaluator_user_id','status','data_version','row_version','rubric_version_id','general_catalog_version','evidence_catalog_version','form_number','visit_date','class_start_time','shift','teacher_name_snapshot','institution_name_snapshot','location','zone','district','circuit','institution_address','grade_course','parallel','sublevel','area','subject','content_topic','student_count','observation_record','strengths','improvements','directive_commitments','teacher_commitments','final_observations','ai_used','reviewed_by_human','created_at','created_by','updated_at','updated_by','finalized_at','finalized_by','reopened_at','reopened_by','reopen_reason','annulled_at','annulled_by','annul_reason','evaluator_name_snapshot','co_evaluator_user_id','co_evaluator_name_snapshot'],
     VISIT_GENERAL_RESPONSES: ['response_id','visit_id','general_criterion_id','result','argument','created_at','updated_at','updated_by'],
     VISIT_RUBRIC_RESPONSES: ['response_id','visit_id','criterion_id','level','descriptor_snapshot','observation','created_at','updated_at','updated_by'],
     VISIT_EVIDENCE_CHECKS: ['visit_check_id','visit_id','check_type_id','is_checked','observation','created_at','updated_at','updated_by'],
@@ -17,9 +17,8 @@ var SheetSchema = (function () {
     DOCUMENTS: ['document_id','visit_id','data_version','document_type','template_version','snapshot_hash','status','drive_file_id','file_name','mime_type','size_bytes','generated_at','generated_by','superseded_at','error_code'],
     DOCUMENT_JOBS: ['job_id','idempotency_key','visit_id','data_version','document_type','status','attempt_count','started_at','completed_at','last_error_code','request_id'],
     AUDIT_LOG: ['event_id','occurred_at','actor_user_id','actor_email','actor_role','action','entity_type','entity_id','data_version','request_id','result','message','metadata_json'],
-    EVALUATOR_ASSIGNMENTS: ['assignment_id','evaluator_user_id','teacher_id','effective_from','effective_to','active','created_at','created_by'],
+    EVALUATOR_ASSIGNMENTS: ['assignment_id','evaluator_user_id','teacher_id','effective_from','effective_to','active','created_at','created_by','co_evaluator_user_id'],
     SEQUENCES: ['sequence_name','year','last_value','updated_at']
   };
   return { all: sheets, names: function () { return Object.keys(sheets); } };
 })();
-

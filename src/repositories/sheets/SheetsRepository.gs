@@ -21,7 +21,38 @@ var SheetsRepository = (function () {
   }
   function toObject_(headers, row) {
     var out = {};
-    headers.forEach(function (h, i) { out[h] = row[i]; });
+    headers.forEach(function (h, i) {
+      var val = row[i];
+      if (val instanceof Date) {
+        if (isNaN(val.getTime())) {
+          val = '';
+        } else if (h === 'visit_date' || h === 'effective_from' || h === 'effective_to') {
+          try {
+            val = Utilities.formatDate(val, Session.getScriptTimeZone() || 'America/Guayaquil', 'yyyy-MM-dd');
+          } catch(e) {
+            var y = val.getFullYear(), m = ('0' + (val.getMonth() + 1)).slice(-2), d = ('0' + val.getDate()).slice(-2);
+            val = y + '-' + m + '-' + d;
+          }
+        } else if (h === 'class_start_time') {
+          try {
+            val = Utilities.formatDate(val, Session.getScriptTimeZone() || 'America/Guayaquil', 'HH:mm');
+          } catch(e) {
+            var hr = ('0' + val.getHours()).slice(-2), mn = ('0' + val.getMinutes()).slice(-2);
+            val = hr + ':' + mn;
+          }
+        } else {
+          val = val.toISOString();
+        }
+      } else if (typeof val === 'string' && val) {
+        if ((h === 'visit_date' || h === 'effective_from' || h === 'effective_to') && val.indexOf('T') >= 0) {
+          val = val.slice(0, 10);
+        } else if (h === 'class_start_time') {
+          var tm = val.match(/(\d{2}:\d{2})/);
+          if (tm) val = tm[1];
+        }
+      }
+      out[h] = (val === undefined || val === null) ? '' : val;
+    });
     return out;
   }
   function all(name) {

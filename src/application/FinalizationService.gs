@@ -1,10 +1,21 @@
 var FinalizationService = (function () {
   function finalize(visitId, expectedVersion, requestId) {
-    var actor = Auth.requireRoles(['ADMIN','DIRECTIVE','EVALUATOR']), lock = LockService.getScriptLock(); lock.waitLock(20000);
+    var actor = Auth.requireRoles(['ADMIN', 'DIRECTIVE', 'EVALUATOR']), lock = LockService.getScriptLock(); lock.waitLock(20000);
     try {
       var row = VisitService.raw(visitId); Auth.assertVisit(actor,row,true);
-      if (Number(row.row_version) !== Number(expectedVersion)) throw AppErrors.conflict();
-      if (row.status !== VisitState.values.REVIEW) throw AppErrors.validation('Pase la evaluación a revisión antes de finalizar.');
+      if (row.status === VisitState.values.FINALIZED || row.status === VisitState.values.DOCUMENTS) {
+        var existingSnap = SheetsRepository.filter('VISIT_SNAPSHOTS', function (s) {
+          return String(s.visit_id) === String(visitId) && Number(s.data_version) === Number(row.data_version);
+        })[0];
+        return { visit: VisitService.aggregate(row), snapshotHash: existingSnap ? existingSnap.snapshot_hash : '' };
+      }
+      if (expectedVersion != null && Number(row.row_version) !== Number(expectedVersion)) throw AppErrors.conflict();
+      if (row.status === VisitState.values.DRAFT || row.status === VisitState.values.REOPENED) {
+        VisitState.assertTransition(row.status, VisitState.values.REVIEW);
+        row.status = VisitState.values.REVIEW;
+      } else if (row.status !== VisitState.values.REVIEW) {
+        throw AppErrors.validation('El estado actual de la evaluación no permite finalizarla.');
+      }
       var aggregate = VisitService.aggregate(row); Validation.validateForFinalization(aggregate);
       VisitState.assertTransition(row.status, VisitState.values.FINALIZED);
       var generalById={},rubricById={},evidenceById={};
@@ -12,7 +23,7 @@ var FinalizationService = (function () {
       SheetsRepository.all('RUBRIC_CRITERIA').forEach(function(c){rubricById[c.criterion_id]=c;});
       SheetsRepository.all('EVIDENCE_CHECK_TYPES').forEach(function(c){evidenceById[c.check_type_id]=c;});
       aggregate.generalResponses.forEach(function(r){var c=generalById[r.generalCriterionId];if(!c||String(c.catalog_version)!==String(row.general_catalog_version))throw AppErrors.validation('Una respuesta general no corresponde al catálogo de la visita.');r.criterionCode=c.criterion_code;r.criterionText=c.text;});
-      aggregate.rubricResponses.forEach(function(r){var c=rubricById[r.criterionId];if(!c||String(c.rubric_version_id)!==String(row.rubric_version_id))throw AppErrors.validation('Una respuesta no corresponde a la versión de rúbrica de la visita.');r.criterionCode=c.criterion_code;r.criterionTitle=c.title;});
+      aggregate.rubricResponses.forEach(function(r){var c=rubricById[r.criterionId];if(!c||String(c.rubric_version_id)!==String(row.rubric_version_id))throw AppErrors.validation('Una respuesta no corresponde a la versión de rúbrica de la visita.');r.criterionCode=c.criterion_code;r.criterionTitle=c.title;r.descriptorAchieved=c.descriptor_achieved;r.descriptorInProgress=c.descriptor_in_progress;r.descriptorBeginning=c.descriptor_beginning;r.groupCode=c.group_code;r.sortOrder=Number(c.sort_order||0);});
       aggregate.evidenceChecks.forEach(function(r){var c=evidenceById[r.checkTypeId];if(!c||String(c.catalog_version)!==String(row.evidence_catalog_version))throw AppErrors.validation('Un check no corresponde al catálogo de la visita.');r.checkCode=c.check_code;r.label=c.label;});
       var existing=SheetsRepository.filter('VISIT_SNAPSHOTS',function(s){return String(s.visit_id)===visitId&&Number(s.data_version)===Number(row.data_version);})[0],snapshot,hash;
       if(existing){snapshot=JSON.parse(existing.snapshot_json);hash=existing.snapshot_hash;}else{snapshot=Object.assign({},aggregate,{snapshotSchemaVersion:1,finalizedAt:JsonUtil.now(),finalizedBy:actor.user_id});delete snapshot.rowVersion;hash=JsonUtil.hash(snapshot);SheetsRepository.append('VISIT_SNAPSHOTS',{snapshot_id:Utilities.getUuid(),visit_id:visitId,data_version:row.data_version,snapshot_json:JSON.stringify(snapshot),snapshot_hash:hash,schema_version:1,created_at:JsonUtil.now(),created_by:actor.user_id});}
@@ -23,7 +34,7 @@ var FinalizationService = (function () {
     } finally { lock.releaseLock(); }
   }
   function changeStatus(visitId, target, expectedVersion, requestId) {
-    var actor=Auth.requireRoles(['ADMIN','DIRECTIVE','EVALUATOR']),row=VisitService.raw(visitId); Auth.assertVisit(actor,row,true);
+    var actor = Auth.requireRoles(['ADMIN', 'DIRECTIVE', 'EVALUATOR']), row = VisitService.raw(visitId); Auth.assertVisit(actor, row, true);
     if(Number(row.row_version)!==Number(expectedVersion)) throw AppErrors.conflict();
     if(target===VisitState.values.REVIEW)Validation.validateForFinalization(VisitService.aggregate(row));
     VisitState.assertTransition(row.status,target); row.status=target; row.row_version=Number(row.row_version)+1; row.updated_at=JsonUtil.now(); row.updated_by=actor.user_id;

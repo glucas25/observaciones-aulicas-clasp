@@ -8,9 +8,18 @@ var Auth = (function () {
     user.email = email;
     return user;
   }
+  function userRoles_(user) {
+    return String(user.role || '').split(',').map(function (r) { return r.trim().toUpperCase(); });
+  }
+  function hasRole(user, role) {
+    var roles = userRoles_(user);
+    return roles.indexOf('ADMIN') >= 0 || roles.indexOf(String(role).toUpperCase()) >= 0;
+  }
   function requireRoles(roles) {
     var user = current();
-    if (roles.indexOf(String(user.role)) < 0) throw AppErrors.forbidden();
+    var userRoles = userRoles_(user);
+    var has = userRoles.indexOf('ADMIN') >= 0 || roles.some(function (r) { return userRoles.indexOf(String(r).toUpperCase()) >= 0; });
+    if (!has) throw AppErrors.forbidden();
     return user;
   }
   function teacherForUser(user) {
@@ -28,14 +37,24 @@ var Auth = (function () {
     return ['FINALIZED','DOCUMENTS_GENERATED'].indexOf(String(visit.status)) >= 0;
   }
   function canViewVisit(user, visit) {
-    if (user.role === 'ADMIN') return true;
+    var userRoles = userRoles_(user);
+    if (userRoles.indexOf('ADMIN') >= 0 || userRoles.indexOf('VIEWER') >= 0) return true;
     if (user.role === 'DIRECTIVE') return String(visit.institution_id) === String(user.institution_id);
     if (String(visit.evaluator_user_id) === String(user.user_id)) return true;
+    if (visit.co_evaluator_user_id && String(visit.co_evaluator_user_id) === String(user.user_id)) return true;
+    if (String(visit.teacher_id) === String(user.user_id)) return true;
     return isReceivedVisit_(user, visit) && isPublished_(visit);
   }
+  function canAccessVisit(user, visit) {
+    return canViewVisit(user, visit);
+  }
   function canEditVisit(user, visit) {
-    if (user.role === 'ADMIN') return true;
-    return ['DIRECTIVE','EVALUATOR'].indexOf(String(user.role)) >= 0 && String(visit.evaluator_user_id) === String(user.user_id);
+    var userRoles = userRoles_(user);
+    if (userRoles.indexOf('ADMIN') >= 0) return true;
+    if (userRoles.indexOf('VIEWER') >= 0) return false;
+    var isLead = String(visit.evaluator_user_id) === String(user.user_id);
+    var isCo = !!(visit.co_evaluator_user_id && String(visit.co_evaluator_user_id) === String(user.user_id));
+    return ['DIRECTIVE','EVALUATOR'].some(function (r) { return userRoles.indexOf(r) >= 0; }) && (isLead || isCo);
   }
   function assertVisit(user, visit, edit) {
     if (!(edit ? canEditVisit(user, visit) : canViewVisit(user, visit))) throw AppErrors.forbidden();
@@ -47,7 +66,7 @@ var Auth = (function () {
     return SheetsRepository.filter('EVALUATOR_ASSIGNMENTS', function (row) {
       return String(row.active).toLowerCase() !== 'false' &&
         String(row.evaluator_user_id) === String(user.user_id) &&
-        String(row.teacher_id) === String(teacher.teacher_id) &&
+        String(row.teacher_id) === String(teacher.teacher_id || teacher.user_id) &&
         (!row.effective_from || String(row.effective_from).slice(0,10) <= date) &&
         (!row.effective_to || String(row.effective_to).slice(0,10) >= date);
     }).length > 0;
@@ -58,9 +77,15 @@ var Auth = (function () {
     if (!hasActiveAssignment(user, teacher, visitDate)) throw AppErrors.forbidden('El docente no está asignado a este evaluador para la fecha indicada.');
   }
   return {
-    current:current, requireRoles:requireRoles, teacherForUser:teacherForUser,
-    canViewVisit:canViewVisit, canEditVisit:canEditVisit, assertVisit:assertVisit,
-    hasActiveAssignment:hasActiveAssignment, assertCanCreate:assertCanCreate
+    current: current,
+    requireRoles: requireRoles,
+    hasRole: hasRole,
+    teacherForUser: teacherForUser,
+    canViewVisit: canViewVisit,
+    canAccessVisit: canAccessVisit,
+    canEditVisit: canEditVisit,
+    assertVisit: assertVisit,
+    hasActiveAssignment: hasActiveAssignment,
+    assertCanCreate: assertCanCreate
   };
 })();
-

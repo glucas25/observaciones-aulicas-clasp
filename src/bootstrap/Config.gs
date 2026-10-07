@@ -21,7 +21,7 @@ var AppConfig = (function () {
         ANNEX_5: p.ANNEX5_TEMPLATE_ID || '',
         FULL_PACKAGE: p.FULL_PACKAGE_TEMPLATE_ID || ''
       },
-      templateVersion: p.TEMPLATE_VERSION || '1.0.0',
+      templateVersion: p.TEMPLATE_VERSION || '2.0.0',
       aiEnabled: String(p.AI_ENABLED).toLowerCase() === 'true',
       aiProvider: p.AI_PROVIDER || 'OPENAI',
       aiModel: p.AI_MODEL || '',

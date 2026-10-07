@@ -10,16 +10,16 @@ var ApiController = (function () {
       var errObj;
       try {
         errObj={ok:false,data:null,error:{code:known?e.code:'INTERNAL_ERROR',message:known?e.message:'Ocurrió un error inesperado. Use el identificador de solicitud para soporte.',details:known?e.details:null},requestId:requestId,serverTime:JsonUtil.now()};
+        return JsonUtil.clientSafe(errObj);
       } catch(e2) {
-        errObj={ok:false,data:null,error:{code:'INTERNAL_ERROR',message:'Error interno del servidor.',details:null},requestId:requestId,serverTime:''};
+        return {ok:false,data:null,error:{code:'INTERNAL_ERROR',message:'Error interno del servidor.',details:null},requestId:requestId,serverTime:''};
       }
-      return JsonUtil.clientSafe(errObj);
     }
   }
   return {invoke:invoke};
 })();
 
-function apiBootstrap(){return ApiController.invoke(function(){var user=Auth.current();return {user:{userId:user.user_id,email:user.email,displayName:user.display_name,role:user.role},catalogs:CatalogService.getAll(),visits:VisitService.list({limit:100}),app:{version:AppConfig.get().version,environment:AppConfig.get().environment}};});}
+function apiBootstrap(){return ApiController.invoke(function(){var user=Auth.current(),roles=String(user.role||'').split(',').map(function(r){return r.trim().toUpperCase();});return {user:{userId:user.user_id,email:user.email,displayName:user.display_name,role:user.role,roles:roles,isAdmin:roles.indexOf('ADMIN')>=0,position:user.position||''},catalogs:CatalogService.getAll(),visits:VisitService.list({limit:100}),app:{version:AppConfig.get().version,environment:AppConfig.get().environment}};});}
 function apiListVisits(payload){return ApiController.invoke(function(p){return VisitService.list(p.filters);},payload);}
 function apiGetVisit(payload){return ApiController.invoke(function(p){return VisitService.get(p.visitId);},payload);}
 function apiCreateVisit(payload){return ApiController.invoke(function(p,r){return VisitService.create(p.visit,r);},payload);}
@@ -28,7 +28,7 @@ function apiChangeVisitStatus(payload){return ApiController.invoke(function(p,r)
 function apiFinalizeVisit(payload){return ApiController.invoke(function(p,r){return FinalizationService.finalize(p.visitId,p.expectedVersion,r);},payload);}
 function apiReopenVisit(payload){return ApiController.invoke(function(p,r){return FinalizationService.reopen(p.visitId,p.reason,r);},payload);}
 function apiAnnulVisit(payload){return ApiController.invoke(function(p,r){return FinalizationService.annul(p.visitId,p.reason,r);},payload);}
-function apiGenerateDocument(payload){return ApiController.invoke(function(p,r){return DocumentService.generate(p.visitId,p.type,r);},payload);}
+function apiGenerateDocument(payload){return ApiController.invoke(function(p,r){return DocumentService.generate(p.visitId,p.type,p,r);},payload);}
 function apiListDocuments(payload){return ApiController.invoke(function(p){return DocumentService.list(p.visitId);},payload);}
 function apiGenerateAiDraft(payload){return ApiController.invoke(function(p,r){return AiDraftService.draft(p.visitId,r);},payload);}
 function apiAcceptAiDraft(payload){return ApiController.invoke(function(p,r){return AiDraftService.accept(p.aiRequestId,p.humanEdited,r);},payload);}
@@ -38,4 +38,5 @@ function apiSaveUser(payload){return ApiController.invoke(function(p,r){return A
 function apiSaveTeacher(payload){return ApiController.invoke(function(p,r){return AdminService.saveTeacher(p,r);},payload);}
 function apiEnableTeacherEvaluator(payload){return ApiController.invoke(function(p,r){return AdminService.enableTeacherEvaluator(p,r);},payload);}
 function apiSaveAssignment(payload){return ApiController.invoke(function(p,r){return AdminService.saveAssignment(p,r);},payload);}
-
+function apiAdminAudit(payload){return ApiController.invoke(function(p){return AdminService.getAudit(p&&p.limit);},payload);}
+function apiUpdateTemplates(payload){return ApiController.invoke(function(){return createStarterTemplates(true);});}
