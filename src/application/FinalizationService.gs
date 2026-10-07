@@ -1,6 +1,6 @@
 var FinalizationService = (function () {
   function finalize(visitId, expectedVersion, requestId) {
-    var actor = Auth.requireRoles(['ADMIN','EVALUATOR']), lock = LockService.getScriptLock(); lock.waitLock(20000);
+    var actor = Auth.requireRoles(['ADMIN','DIRECTIVE','EVALUATOR']), lock = LockService.getScriptLock(); lock.waitLock(20000);
     try {
       var row = VisitService.raw(visitId); Auth.assertVisit(actor,row,true);
       if (Number(row.row_version) !== Number(expectedVersion)) throw AppErrors.conflict();
@@ -23,7 +23,7 @@ var FinalizationService = (function () {
     } finally { lock.releaseLock(); }
   }
   function changeStatus(visitId, target, expectedVersion, requestId) {
-    var actor=Auth.requireRoles(['ADMIN','EVALUATOR']),row=VisitService.raw(visitId); Auth.assertVisit(actor,row,true);
+    var actor=Auth.requireRoles(['ADMIN','DIRECTIVE','EVALUATOR']),row=VisitService.raw(visitId); Auth.assertVisit(actor,row,true);
     if(Number(row.row_version)!==Number(expectedVersion)) throw AppErrors.conflict();
     if(target===VisitState.values.REVIEW)Validation.validateForFinalization(VisitService.aggregate(row));
     VisitState.assertTransition(row.status,target); row.status=target; row.row_version=Number(row.row_version)+1; row.updated_at=JsonUtil.now(); row.updated_by=actor.user_id;

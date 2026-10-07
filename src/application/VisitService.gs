@@ -34,12 +34,13 @@ var VisitService = (function () {
     return dto;
   }
   function create(dto, requestId) {
-    var actor = Auth.requireRoles(['ADMIN','EVALUATOR']);
+    var actor = Auth.requireRoles(['ADMIN','DIRECTIVE','EVALUATOR']);
     dto = dto || {};
     var teacher = SheetsRepository.find('TEACHERS', 'teacher_id', dto.teacherId);
     if (!teacher || String(teacher.active).toLowerCase() === 'false') throw AppErrors.validation('Seleccione un docente activo.');
     var institution = SheetsRepository.find('INSTITUTIONS', 'institution_id', teacher.institution_id);
     if (!institution) throw AppErrors.validation('La institución del docente no existe.');
+    Auth.assertCanCreate(actor, teacher, dto.visitDate);
     var lock = LockService.getScriptLock(); lock.waitLock(20000);
     try {
       var year = new Date().getFullYear(), sequence = SheetsRepository.nextSequence('VISIT', year);
@@ -91,7 +92,7 @@ var VisitService = (function () {
     return criterion[fields[level]] || '';
   }
   function save(visitId, dto, expectedVersion, requestId) {
-    var actor = Auth.requireRoles(['ADMIN','EVALUATOR']); Validation.validateVisitDraft(dto);
+    var actor = Auth.requireRoles(['ADMIN','DIRECTIVE','EVALUATOR']); Validation.validateVisitDraft(dto);
     var lock = LockService.getScriptLock(); lock.waitLock(20000);
     try {
       var current = raw_(visitId); Auth.assertVisit(actor,current,true);
@@ -110,7 +111,7 @@ var VisitService = (function () {
   function list(filters) {
     var actor = Auth.current(), f = filters || {};
     return SheetsRepository.filter('VISITS', function (v) {
-      if (!Auth.canAccessVisit(actor,v)) return false;
+      if (!Auth.canViewVisit(actor,v)) return false;
       if (f.status && v.status !== f.status) return false;
       if (f.teacherId && String(v.teacher_id) !== String(f.teacherId)) return false;
       if (f.from && String(v.visit_date) < f.from) return false;

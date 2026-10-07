@@ -3,7 +3,7 @@ var ApiController = (function () {
     var requestId=Utilities.getUuid();
     try {
       var data=action(payload||{},requestId);
-      return {ok:true,data:data,error:null,requestId:requestId,serverTime:JsonUtil.now()};
+      return JsonUtil.clientSafe({ok:true,data:data,error:null,requestId:requestId,serverTime:JsonUtil.now()});
     } catch(e) {
       console.error(requestId+' '+(e.stack||e.message));
       var known=e&&e.code;
@@ -13,7 +13,7 @@ var ApiController = (function () {
       } catch(e2) {
         errObj={ok:false,data:null,error:{code:'INTERNAL_ERROR',message:'Error interno del servidor.',details:null},requestId:requestId,serverTime:''};
       }
-      return errObj;
+      return JsonUtil.clientSafe(errObj);
     }
   }
   return {invoke:invoke};
@@ -36,5 +36,6 @@ function apiAdminData(){return ApiController.invoke(function(){return AdminServi
 function apiSaveInstitution(payload){return ApiController.invoke(function(p,r){return AdminService.saveInstitution(p,r);},payload);}
 function apiSaveUser(payload){return ApiController.invoke(function(p,r){return AdminService.saveUser(p,r);},payload);}
 function apiSaveTeacher(payload){return ApiController.invoke(function(p,r){return AdminService.saveTeacher(p,r);},payload);}
+function apiEnableTeacherEvaluator(payload){return ApiController.invoke(function(p,r){return AdminService.enableTeacherEvaluator(p,r);},payload);}
 function apiSaveAssignment(payload){return ApiController.invoke(function(p,r){return AdminService.saveAssignment(p,r);},payload);}
 

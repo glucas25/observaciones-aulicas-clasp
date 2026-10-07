@@ -39,11 +39,13 @@ Solo configuración no secreta. Los secretos viven en propiedades protegidas.
 
 `user_id`, `email`, `display_name`, `role`, `institution_id`, `active`, `created_at`, `updated_at`, `last_access_at`.
 
-Roles: `ADMIN`, `EVALUATOR`, `VIEWER`.
+Roles: `ADMIN`, `DIRECTIVE`, `EVALUATOR`, `TEACHER`. Las cuentas `TEACHER` se vinculan opcionalmente con su ficha mediante `TEACHERS.user_id`.
 
 ### `TEACHERS`
 
-`teacher_id`, `teacher_code`, `institution_id`, `identity_reference` opcional, `full_name`, `email` opcional, `active`, `created_at`, `updated_at`.
+`teacher_id`, `teacher_code`, `institution_id`, `identity_reference` opcional, `full_name`, `email` opcional, `active`, `created_at`, `updated_at`, `user_id` opcional FK a `USERS`.
+
+`user_id` vincula la ficha docente con su cuenta de acceso cuando la misma persona actúa como evaluador o directivo. El docente sigue siendo la entidad maestra y no se vuelve a ingresar manualmente en `USERS`.
 
 Evitar cédula si no es necesaria. Si se usa, definir protección y retención.
 
@@ -124,6 +126,7 @@ Tipos: `ANNEX_1`, `ANNEX_2`, `ANNEX_3`, `ANNEX_5`, `FULL_PACKAGE`.
 ```text
 INSTITUTIONS 1---N USERS
 INSTITUTIONS 1---N TEACHERS
+USERS        0---1 TEACHERS (cuenta vinculada opcional)
 TEACHERS     1---N VISITS
 USERS        1---N VISITS (evaluator)
 RUBRIC_VERSIONS 1---N RUBRIC_CRITERIA

@@ -13,13 +13,21 @@ function setupProject(options) {
       sheet.setFrozenRows(1);
     } else {
       var actual = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-      if (JSON.stringify(actual) !== JSON.stringify(expected)) throw AppErrors.validation('El esquema de ' + name + ' no coincide.');
+      var compatible = actual.length < expected.length && actual.every(function (header, i) { return header === expected[i]; });
+      if (JSON.stringify(actual) !== JSON.stringify(expected) && !compatible) throw AppErrors.validation('El esquema de ' + name + ' no coincide.');
+      if (compatible) sheet.getRange(1, actual.length + 1, 1, expected.length - actual.length).setValues([expected.slice(actual.length)]).setFontWeight('bold');
     }
   });
   var defaultSheet = ss.getSheetByName('Sheet1') || ss.getSheetByName('Hoja 1');
   if (defaultSheet && ss.getSheets().length > 1) ss.deleteSheet(defaultSheet);
   seedCatalogs();
   return { spreadsheetId: ss.getId(), url: ss.getUrl() };
+}
+
+function migrateProjectSchema() {
+  Auth.requireRoles(['ADMIN']);
+  SheetSchema.names().forEach(function (name) { SheetsRepository.ensureColumns(name, SheetSchema.all[name]); });
+  return { migrated: true, schemaVersion: 2 };
 }
 
 function bootstrapAdmin(email, displayName) {

@@ -29,6 +29,21 @@ var SheetsRepository = (function () {
     if (last < 2) return [];
     return sheet.getRange(2, 1, last - 1, headers.length).getValues().map(function (r) { return toObject_(headers, r); });
   }
+  function ensureColumns(name, expectedHeaders) {
+    var sheet = sheet_(name), actual = header_(sheet), expected = expectedHeaders || [];
+    if (JSON.stringify(actual) === JSON.stringify(expected)) return actual;
+    var compatible = actual.length < expected.length && actual.every(function (header, i) { return header === expected[i]; });
+    if (!compatible) throw AppErrors.validation('El esquema de ' + name + ' no coincide.');
+    var missing = expected.slice(actual.length);
+    sheet.getRange(1, actual.length + 1, 1, missing.length).setValues([missing]).setFontWeight('bold');
+    return expected;
+  }
+  function recent(name, limit) {
+    var sheet = sheet_(name), headers = header_(sheet), last = sheet.getLastRow();
+    var count = Math.max(0, Math.min(Number(limit) || 0, last - 1));
+    if (!count) return [];
+    return sheet.getRange(last - count + 1, 1, count, headers.length).getValues().map(function (r) { return toObject_(headers, r); });
+  }
   function find(name, field, value) {
     var rows = all(name);
     for (var i = 0; i < rows.length; i++) if (String(rows[i][field]) === String(value)) return rows[i];
@@ -70,8 +85,6 @@ var SheetsRepository = (function () {
     upsert('SEQUENCES', ['sequence_name'], { sequence_name: name, year: year, last_value: value, updated_at: JsonUtil.now() });
     return value;
   }
-  return { spreadsheet: spreadsheet_, all: all, find: find, filter: filter, append: append, upsert: upsert, removeWhere: removeWhere, nextSequence: nextSequence };
+  return { spreadsheet: spreadsheet_, all: all, recent: recent, ensureColumns: ensureColumns, find: find, filter: filter, append: append, upsert: upsert, removeWhere: removeWhere, nextSequence: nextSequence };
 })();
-
-
 
