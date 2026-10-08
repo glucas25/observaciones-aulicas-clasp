@@ -19,11 +19,12 @@ var ApiController = (function () {
   return {invoke:invoke};
 })();
 
-function apiBootstrap(){return ApiController.invoke(function(){var user=Auth.current(),roles=String(user.role||'').split(',').map(function(r){return r.trim().toUpperCase();});return {user:{userId:user.user_id,email:user.email,displayName:user.display_name,role:user.role,roles:roles,isAdmin:roles.indexOf('ADMIN')>=0,position:user.position||''},catalogs:CatalogService.getAll(),visits:VisitService.list({limit:100}),app:{version:AppConfig.get().version,environment:AppConfig.get().environment}};});}
+function apiBootstrap(){return ApiController.invoke(function(){var user=Auth.current(),roles=String(user.role||'').split(',').map(function(r){return r.trim().toUpperCase();}),teacher=Auth.teacherForUser(user);return {user:{userId:user.user_id,teacherId:teacher?teacher.teacher_id:null,email:user.email,displayName:user.display_name,role:user.role,roles:roles,isAdmin:roles.indexOf('ADMIN')>=0,position:user.position||''},catalogs:CatalogService.getAll(),visits:VisitService.list({limit:100}),app:{version:AppConfig.get().version,environment:AppConfig.get().environment}};});}
 function apiListVisits(payload){return ApiController.invoke(function(p){return VisitService.list(p.filters);},payload);}
 function apiGetVisit(payload){return ApiController.invoke(function(p){return VisitService.get(p.visitId);},payload);}
 function apiCreateVisit(payload){return ApiController.invoke(function(p,r){return VisitService.create(p.visit,r);},payload);}
 function apiSaveVisit(payload){return ApiController.invoke(function(p,r){return VisitService.save(p.visitId,p.visit,p.expectedVersion,r);},payload);}
+function apiSaveTeacherCommitment(payload){return ApiController.invoke(function(p,r){return VisitService.saveTeacherCommitment(p.visitId,p.teacherCommitment,p.expectedVersion,r);},payload);}
 function apiChangeVisitStatus(payload){return ApiController.invoke(function(p,r){return FinalizationService.changeStatus(p.visitId,p.status,p.expectedVersion,r);},payload);}
 function apiFinalizeVisit(payload){return ApiController.invoke(function(p,r){return FinalizationService.finalize(p.visitId,p.expectedVersion,r);},payload);}
 function apiReopenVisit(payload){return ApiController.invoke(function(p,r){return FinalizationService.reopen(p.visitId,p.reason,r);},payload);}

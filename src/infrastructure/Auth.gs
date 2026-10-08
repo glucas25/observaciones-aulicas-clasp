@@ -26,15 +26,16 @@ var Auth = (function () {
     var email = String(user && user.email || '').trim().toLowerCase();
     if (!email) return null;
     return SheetsRepository.filter('TEACHERS', function (teacher) {
-      return String(teacher.email || '').trim().toLowerCase() === email && String(teacher.active).toLowerCase() !== 'false';
+      return (String(teacher.email || '').trim().toLowerCase() === email || (teacher.user_id && String(teacher.user_id) === String(user.user_id))) && String(teacher.active).toLowerCase() !== 'false';
     })[0] || null;
   }
   function isReceivedVisit_(user, visit) {
     var teacher = teacherForUser(user);
-    return !!teacher && String(visit.teacher_id) === String(teacher.teacher_id);
+    var tchId = teacher ? String(teacher.teacher_id) : '';
+    return (tchId && String(visit.teacher_id) === tchId) || (user.user_id && String(visit.teacher_id) === String(user.user_id));
   }
-  function isPublished_(visit) {
-    return ['FINALIZED','DOCUMENTS_GENERATED'].indexOf(String(visit.status)) >= 0;
+  function isVisibleToTeacher_(visit) {
+    return ['IN_REVIEW', 'FINALIZED', 'DOCUMENTS_GENERATED'].indexOf(String(visit.status)) >= 0;
   }
   function canViewVisit(user, visit) {
     var userRoles = userRoles_(user);
@@ -42,11 +43,13 @@ var Auth = (function () {
     if (user.role === 'DIRECTIVE') return String(visit.institution_id) === String(user.institution_id);
     if (String(visit.evaluator_user_id) === String(user.user_id)) return true;
     if (visit.co_evaluator_user_id && String(visit.co_evaluator_user_id) === String(user.user_id)) return true;
-    if (String(visit.teacher_id) === String(user.user_id)) return true;
-    return isReceivedVisit_(user, visit) && isPublished_(visit);
+    return isReceivedVisit_(user, visit) && isVisibleToTeacher_(visit);
   }
   function canAccessVisit(user, visit) {
     return canViewVisit(user, visit);
+  }
+  function isObservedTeacher(user, visit) {
+    return isReceivedVisit_(user, visit);
   }
   function canEditVisit(user, visit) {
     var userRoles = userRoles_(user);
@@ -81,6 +84,7 @@ var Auth = (function () {
     requireRoles: requireRoles,
     hasRole: hasRole,
     teacherForUser: teacherForUser,
+    isObservedTeacher: isObservedTeacher,
     canViewVisit: canViewVisit,
     canAccessVisit: canAccessVisit,
     canEditVisit: canEditVisit,

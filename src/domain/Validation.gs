@@ -34,14 +34,14 @@ var Validation = (function () {
     });
     return true;
   }
-  function validateForFinalization(aggregate) {
+  function validateForReview(aggregate) {
     validateVisitDraft(aggregate);
     if (!aggregate.shift) aggregate.shift = 'Matutina';
     var labels = {
       visitDate: 'Fecha', teacherId: 'Docente', gradeCourse: 'Curso', subject: 'Asignatura',
       contentTopic: 'Contenido / Tema',
       strengths: 'Fortalezas', improvements: 'Aspectos a mejorar',
-      directiveCommitments: 'Compromiso directivo', teacherCommitments: 'Compromiso docente'
+      directiveCommitments: 'Compromiso directivo'
     };
     Object.keys(labels).forEach(function (key) { required(aggregate[key], labels[key], 5000); });
     if (aggregate.observationRecord != null && aggregate.observationRecord !== '') {
@@ -58,9 +58,14 @@ var Validation = (function () {
     if (aggregate.aiUsed && !aggregate.reviewedByHuman) throw AppErrors.validation('Confirme la revisión humana del texto asistido por IA.');
     return true;
   }
+  function validateForFinalization(aggregate) {
+    validateForReview(aggregate);
+    required(aggregate.teacherCommitments, 'Compromiso docente', 5000);
+    return true;
+  }
   function safeCell(value) {
     var s = value == null ? '' : String(value);
     return /^[=+\-@]/.test(s) ? "'" + s : s;
   }
-  return { text: text, required: required, validateVisitDraft: validateVisitDraft, validateForFinalization: validateForFinalization, safeCell: safeCell };
+  return { text: text, required: required, validateVisitDraft: validateVisitDraft, validateForReview: validateForReview, validateForFinalization: validateForFinalization, safeCell: safeCell };
 })();

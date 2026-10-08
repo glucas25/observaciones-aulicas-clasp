@@ -36,7 +36,7 @@ var FinalizationService = (function () {
   function changeStatus(visitId, target, expectedVersion, requestId) {
     var actor = Auth.requireRoles(['ADMIN', 'DIRECTIVE', 'EVALUATOR']), row = VisitService.raw(visitId); Auth.assertVisit(actor, row, true);
     if(Number(row.row_version)!==Number(expectedVersion)) throw AppErrors.conflict();
-    if(target===VisitState.values.REVIEW)Validation.validateForFinalization(VisitService.aggregate(row));
+    if(target===VisitState.values.REVIEW)Validation.validateForReview(VisitService.aggregate(row));
     VisitState.assertTransition(row.status,target); row.status=target; row.row_version=Number(row.row_version)+1; row.updated_at=JsonUtil.now(); row.updated_by=actor.user_id;
     SheetsRepository.upsert('VISITS',['visit_id'],row); Audit.write(actor,'VISIT_STATUS_CHANGED','VISIT',visitId,row.data_version,requestId,'SUCCESS','Estado actualizado',{status:target});
     return VisitService.aggregate(row);

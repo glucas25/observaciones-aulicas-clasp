@@ -201,5 +201,28 @@ var VisitService = (function () {
       return true;
     }).sort(function (a, b) { return String(b.updated_at).localeCompare(String(a.updated_at)); }).slice(0, Number(f.limit || 100)).map(toCamel_);
   }
-  return { create: create, save: save, get: get, list: list, raw: raw_, aggregate: aggregate_, toCamel: toCamel_, descriptorFor: descriptorFor_ };
+  function saveTeacherCommitment(visitId, commitment, expectedVersion, requestId) {
+    var actor = Auth.current();
+    var lock = LockService.getScriptLock(); lock.waitLock(20000);
+    try {
+      var current = raw_(visitId);
+      var isObserver = Auth.isObservedTeacher ? Auth.isObservedTeacher(actor, current) : false;
+      var canEdit = Auth.canEditVisit ? Auth.canEditVisit(actor, current) : false;
+      if (!isObserver && !canEdit) throw AppErrors.forbidden('No tiene permiso para editar este compromiso.');
+      if (current.status !== VisitState.values.REVIEW && !canEdit) {
+        throw AppErrors.validation('Solo se puede registrar el compromiso mientras la evaluación esté En Revisión.');
+      }
+      if (expectedVersion != null && Number(current.row_version) !== Number(expectedVersion)) throw AppErrors.conflict();
+      var text = Validation.text(commitment, 5000);
+      var now = JsonUtil.now();
+      current.teacher_commitments = text;
+      current.row_version = Number(current.row_version) + 1;
+      current.updated_at = now;
+      current.updated_by = actor.user_id;
+      SheetsRepository.upsert('VISITS', ['visit_id'], current);
+      Audit.write(actor, 'TEACHER_COMMITMENT_SAVED', 'VISIT', visitId, current.data_version, requestId, 'SUCCESS', 'Compromiso del docente guardado');
+      return aggregate_(current);
+    } finally { lock.releaseLock(); }
+  }
+  return { create: create, save: save, saveTeacherCommitment: saveTeacherCommitment, get: get, list: list, raw: raw_, aggregate: aggregate_, toCamel: toCamel_, descriptorFor: descriptorFor_ };
 })();
