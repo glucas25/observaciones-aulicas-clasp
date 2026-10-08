@@ -1,8 +1,46 @@
 var AdminService = (function () {
+  function parseDriveFileId_(input) {
+    if (!input || typeof input !== 'string') return '';
+    var str = input.trim();
+    var match = str.match(/\/d\/([a-zA-Z0-9_-]+)/);
+    if (match) return match[1];
+    match = str.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (match) return match[1];
+    if (/^[a-zA-Z0-9_-]{20,}$/.test(str)) return str;
+    return str;
+  }
   function saveInstitution(dto, requestId) {
     var actor = Auth.requireRoles(['ADMIN']), now = JsonUtil.now(), current = dto.institutionId ? SheetsRepository.find('INSTITUTIONS', 'institution_id', dto.institutionId) : null;
-    var row = { institution_id: dto.institutionId || Utilities.getUuid(), institution_code: dto.institutionCode || (current && current.institution_code) || 'INS-001', name: Validation.required(dto.name || (current && current.name), 'Nombre de institución', 250), location: Validation.text(dto.location != null ? dto.location : (current && current.location), 250), zone: Validation.text(dto.zone != null ? dto.zone : (current && current.zone), 50), district: Validation.text(dto.district != null ? dto.district : (current && current.district), 50), circuit: Validation.text(dto.circuit != null ? dto.circuit : (current && current.circuit), 50), address: Validation.text(dto.address != null ? dto.address : (current && current.address), 500), default_shift: Validation.text(dto.defaultShift != null ? dto.defaultShift : (current && current.default_shift), 50), active: dto.active !== false, created_at: current ? current.created_at : now, updated_at: now };
-    SheetsRepository.upsert('INSTITUTIONS', ['institution_id'], row); Audit.write(actor, 'INSTITUTION_SAVED', 'INSTITUTION', row.institution_id, '', requestId, 'SUCCESS', 'Institución guardada'); return row;
+    var rawLogo = dto.logoDriveUrl != null ? dto.logoDriveUrl : (dto.logoDriveId != null ? dto.logoDriveId : (current ? (current.logo_drive_url || current.logo_drive_id || '') : ''));
+    var logoId = parseDriveFileId_(rawLogo);
+    var row = {
+      institution_id: dto.institutionId || (current && current.institution_id) || Utilities.getUuid(),
+      institution_code: dto.institutionCode || (current && current.institution_code) || 'INS-001',
+      name: Validation.required(dto.name || (current && current.name), 'Nombre de institución', 250),
+      location: Validation.text(dto.location != null ? dto.location : (current && current.location), 250),
+      zone: Validation.text(dto.zone != null ? dto.zone : (current && current.zone), 50),
+      district: Validation.text(dto.district != null ? dto.district : (current && current.district), 50),
+      circuit: Validation.text(dto.circuit != null ? dto.circuit : (current && current.circuit), 50),
+      address: Validation.text(dto.address != null ? dto.address : (current && current.address), 500),
+      default_shift: Validation.text(dto.defaultShift != null ? dto.defaultShift : (current && current.default_shift), 50),
+      active: dto.active !== false,
+      logo_drive_id: logoId,
+      logo_drive_url: rawLogo,
+      created_at: current ? current.created_at : now,
+      updated_at: now
+    };
+    SheetsRepository.upsert('INSTITUTIONS', ['institution_id'], row);
+    if (current && current.logo_drive_id && current.logo_drive_id !== logoId) {
+      try {
+        if (typeof DocsGateway !== 'undefined' && DocsGateway.clearLogoCache) {
+          DocsGateway.clearLogoCache(current.logo_drive_id);
+        } else if (typeof CacheService !== 'undefined') {
+          CacheService.getScriptCache().remove('LOGO_' + current.logo_drive_id);
+        }
+      } catch (e) {}
+    }
+    Audit.write(actor, 'INSTITUTION_SAVED', 'INSTITUTION', row.institution_id, '', requestId, 'SUCCESS', 'Institución guardada');
+    return row;
   }
   function saveUser(dto, requestId) {
     var actor = Auth.requireRoles(['ADMIN']);

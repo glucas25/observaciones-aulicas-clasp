@@ -154,6 +154,167 @@ var DocsGateway = (function () {
     }
   }
 
+  var memBlobCache_ = {};
+
+  function parseDriveFileId_(input) {
+    if (!input || typeof input !== 'string') return '';
+    var str = input.trim();
+    var match = str.match(/\/d\/([a-zA-Z0-9_-]+)/);
+    if (match) return match[1];
+    match = str.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (match) return match[1];
+    if (/^[a-zA-Z0-9_-]{20,}$/.test(str)) return str;
+    return str;
+  }
+
+  function getLogoBlob_(logoId) {
+    if (!logoId) return null;
+    if (memBlobCache_[logoId]) return memBlobCache_[logoId];
+
+    try {
+      if (typeof CacheService !== 'undefined') {
+        var scriptCache = CacheService.getScriptCache();
+        var cached = scriptCache.get('LOGO_' + logoId);
+        if (cached) {
+          var parsed = JSON.parse(cached);
+          var blobFromCache = Utilities.newBlob(Utilities.base64Decode(parsed.data), parsed.mimeType, 'logo');
+          memBlobCache_[logoId] = blobFromCache;
+          return blobFromCache;
+        }
+      }
+    } catch (eCache) {
+      console.warn('CacheService read failed: ' + eCache.message);
+    }
+
+    try {
+      if (typeof DriveApp !== 'undefined') {
+        var file = DriveApp.getFileById(logoId);
+        var blob = file.getBlob();
+        memBlobCache_[logoId] = blob;
+
+        try {
+          if (typeof CacheService !== 'undefined') {
+            var bytes = blob.getBytes();
+            if (bytes.length <= 75000) {
+              var payload = JSON.stringify({
+                mimeType: blob.getContentType(),
+                data: Utilities.base64Encode(bytes)
+              });
+              CacheService.getScriptCache().put('LOGO_' + logoId, payload, 21600);
+            }
+          }
+        } catch (eCacheWrite) {
+          console.warn('CacheService write failed: ' + eCacheWrite.message);
+        }
+
+        return blob;
+      }
+    } catch (eDrive) {
+      console.warn('DriveApp.getFileById failed for logo ' + logoId + ': ' + eDrive.message);
+    }
+
+    return null;
+  }
+
+  function clearLogoCache_(logoId) {
+    if (logoId) {
+      delete memBlobCache_[logoId];
+      try {
+        if (typeof CacheService !== 'undefined') {
+          CacheService.getScriptCache().remove('LOGO_' + logoId);
+        }
+      } catch (e) {}
+    } else {
+      memBlobCache_ = {};
+    }
+  }
+
+  function resolveInstitutionLogoId_(snapshot) {
+    if (snapshot && (snapshot.institutionLogoDriveId || snapshot.logoDriveId)) {
+      return parseDriveFileId_(snapshot.institutionLogoDriveId || snapshot.logoDriveId);
+    }
+    try {
+      if (typeof SheetsRepository !== 'undefined') {
+        var institutions = SheetsRepository.all('INSTITUTIONS');
+        if (institutions && institutions.length > 0) {
+          var inst = institutions[0];
+          return parseDriveFileId_(inst.logo_drive_id || inst.logo_file_id || inst.logo_drive_url || '');
+        }
+      }
+    } catch (e) {
+      console.warn('Could not lookup institution logo from SheetsRepository: ' + e.message);
+    }
+    return '';
+  }
+
+  function appendInstitutionalHeader_(body, snapshot, logoBlob) {
+    var instName = String(snapshot.institutionNameSnapshot || 'INSTITUCIÓN EDUCATIVA').toUpperCase();
+    var locationParts = [];
+    if (snapshot.district) locationParts.push('Distrito ' + snapshot.district);
+    if (snapshot.circuit) locationParts.push('Circuito ' + snapshot.circuit);
+    if (snapshot.zone) locationParts.push('Zona ' + snapshot.zone);
+    if (!locationParts.length && snapshot.location) locationParts.push(snapshot.location);
+    var subLocation = locationParts.join(' · ');
+
+    var table = body.appendTable();
+    table.setBorderColor('#FFFFFF');
+    table.setBorderWidth(0);
+
+    var row = table.appendTableRow();
+    var hasLogo = false;
+
+    if (logoBlob) {
+      try {
+        var cellLogo = row.appendTableCell();
+        cellLogo.setPaddingTop(2).setPaddingBottom(4).setPaddingLeft(0).setPaddingRight(6);
+        var img = cellLogo.appendImage(logoBlob);
+        var origW = (img && img.getWidth) ? img.getWidth() : 100;
+        var origH = (img && img.getHeight) ? img.getHeight() : 50;
+        var maxW = 100;
+        var maxH = 46;
+        var ratio = Math.min(maxW / origW, maxH / origH, 1);
+        if (img && img.setWidth) img.setWidth(Math.round(origW * ratio));
+        if (img && img.setHeight) img.setHeight(Math.round(origH * ratio));
+        if (cellLogo.getNumChildren() > 1 && cellLogo.getChild(0).getType && cellLogo.getChild(0).getType() === DocumentApp.ElementType.PARAGRAPH) {
+          var firstP = cellLogo.getChild(0).asParagraph();
+          if (firstP.getText && firstP.getText() === '') {
+            firstP.removeFromParent();
+          }
+        }
+        cellLogo.setWidth(105);
+        hasLogo = true;
+      } catch (eImg) {
+        console.warn('No se pudo insertar la imagen del logo: ' + eImg.message);
+        hasLogo = false;
+      }
+    }
+
+    var cellText = row.appendTableCell();
+    cellText.setPaddingTop(2).setPaddingBottom(4).setPaddingLeft(hasLogo ? 6 : 0).setPaddingRight(0);
+    cellText.setWidth(hasLogo ? 435 : 540);
+
+    var pName = cellText.getChild(0).asParagraph();
+    pName.setText(instName);
+    pName.setFontFamily('Arial').setFontSize(10.5).setBold(true);
+    pName.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+
+    if (subLocation) {
+      var pLoc = cellText.appendParagraph(subLocation);
+      pLoc.setFontFamily('Arial').setFontSize(7.5).setForegroundColor('#475569');
+      pLoc.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+    }
+
+    var pSub = cellText.appendParagraph('SISTEMA DE GESTIÓN Y SEGUIMIENTO A LA PRÁCTICA PEDAGÓGICA');
+    pSub.setFontFamily('Arial').setFontSize(7.5).setBold(true).setForegroundColor('#166534');
+    pSub.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+
+    try {
+      var pDivider = body.appendParagraph('');
+      if (pDivider.setSpacingAfter) pDivider.setSpacingAfter(4);
+      if (pDivider.setSpacingBefore) pDivider.setSpacingBefore(0);
+    } catch (e) {}
+  }
+
   function appendBannerBox_(body, title, subtitle) {
     var table = body.appendTable([
       [title + (subtitle ? ' ' + subtitle : '')]
@@ -424,7 +585,8 @@ var DocsGateway = (function () {
     }
   }
 
-  function buildAnnex1Section_(body, snapshot) {
+  function buildAnnex1Section_(body, snapshot, logoBlob) {
+    appendInstitutionalHeader_(body, snapshot, logoBlob);
     var pTop = body.appendParagraph('Anexo 1: Registro de la observación de clase.');
     pTop.setFontFamily('Arial').setFontSize(9.5).setBold(true);
 
@@ -482,7 +644,8 @@ var DocsGateway = (function () {
     buildSignaturesTable_(sigTable, snapshot);
   }
 
-  function buildAnnex2Section_(body, snapshot) {
+  function buildAnnex2Section_(body, snapshot, logoBlob) {
+    appendInstitutionalHeader_(body, snapshot, logoBlob);
     var pTop = body.appendParagraph('Anexo 2: ficha de observación de clase.');
     pTop.setFontFamily('Arial').setFontSize(9.5).setBold(true);
 
@@ -586,7 +749,8 @@ var DocsGateway = (function () {
     buildSignaturesTable_(sigTable, snapshot);
   }
 
-  function buildAnnex3Section_(body, snapshot) {
+  function buildAnnex3Section_(body, snapshot, logoBlob) {
+    appendInstitutionalHeader_(body, snapshot, logoBlob);
     var pTop = body.appendParagraph('Anexo 3: Rúbrica para la ficha de observación de clase:');
     pTop.setFontFamily('Arial').setFontSize(9.5).setBold(true);
 
@@ -618,7 +782,8 @@ var DocsGateway = (function () {
     buildSignaturesTable_(sigTable, snapshot);
   }
 
-  function buildAnnex5Section_(body, snapshot) {
+  function buildAnnex5Section_(body, snapshot, logoBlob) {
+    appendInstitutionalHeader_(body, snapshot, logoBlob);
     var pTop = body.appendParagraph('Anexo 5: Registro para la reflexión pedagógica.');
     pTop.setFontFamily('Arial').setFontSize(9.5).setBold(true);
 
@@ -709,27 +874,27 @@ var DocsGateway = (function () {
     buildSignaturesTable_(sigTable, snapshot);
   }
 
-  function buildFullPackage_(body, snapshot) {
-    buildAnnex1Section_(body, snapshot);
+  function buildFullPackage_(body, snapshot, logoBlob) {
+    buildAnnex1Section_(body, snapshot, logoBlob);
     body.appendPageBreak();
-    buildAnnex2Section_(body, snapshot);
+    buildAnnex2Section_(body, snapshot, logoBlob);
     body.appendPageBreak();
-    buildAnnex3Section_(body, snapshot);
+    buildAnnex3Section_(body, snapshot, logoBlob);
     body.appendPageBreak();
-    buildAnnex5Section_(body, snapshot);
+    buildAnnex5Section_(body, snapshot, logoBlob);
   }
 
-  function buildDocument_(body, snapshot, type) {
+  function buildDocument_(body, snapshot, type, logoBlob) {
     if (type === 'ANNEX_1') {
-      buildAnnex1Section_(body, snapshot);
+      buildAnnex1Section_(body, snapshot, logoBlob);
     } else if (type === 'ANNEX_2') {
-      buildAnnex2Section_(body, snapshot);
+      buildAnnex2Section_(body, snapshot, logoBlob);
     } else if (type === 'ANNEX_3') {
-      buildAnnex3Section_(body, snapshot);
+      buildAnnex3Section_(body, snapshot, logoBlob);
     } else if (type === 'ANNEX_5') {
-      buildAnnex5Section_(body, snapshot);
+      buildAnnex5Section_(body, snapshot, logoBlob);
     } else if (type === 'FULL_PACKAGE') {
-      buildFullPackage_(body, snapshot);
+      buildFullPackage_(body, snapshot, logoBlob);
     }
   }
 
@@ -747,7 +912,10 @@ var DocsGateway = (function () {
       body.setMarginRight(36);
     } catch (e) {}
 
-    buildDocument_(body, snapshot, type);
+    var logoId = resolveInstitutionLogoId_(snapshot);
+    var logoBlob = getLogoBlob_(logoId);
+
+    buildDocument_(body, snapshot, type, logoBlob);
 
     if (body.getNumChildren() > 1 && body.getChild(0).getType() === DocumentApp.ElementType.PARAGRAPH) {
       var firstP = body.getChild(0).asParagraph();
@@ -763,5 +931,13 @@ var DocsGateway = (function () {
     return file;
   }
 
-  return { render: render, replacements: replacements };
+  return {
+    render: render,
+    replacements: replacements,
+    parseDriveFileId: parseDriveFileId_,
+    getLogoBlob: getLogoBlob_,
+    clearLogoCache: clearLogoCache_,
+    resolveInstitutionLogoId: resolveInstitutionLogoId_,
+    appendInstitutionalHeader: appendInstitutionalHeader_
+  };
 })();

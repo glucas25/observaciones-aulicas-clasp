@@ -90,7 +90,27 @@ function appendSectionHeader_(body, title, bgColor, textColor) {
   t.setBold(true);
 }
 
+function appendInstitutionalHeaderTemplate_(body) {
+  var table = body.appendTable([
+    ['{{INSTITUTION_NAME}}\nSISTEMA DE GESTIÓN Y SEGUIMIENTO A LA PRÁCTICA PEDAGÓGICA']
+  ]);
+  table.setBorderColor('#FFFFFF');
+  table.setBorderWidth(0);
+  var cell = table.getCell(0, 0);
+  cell.setPaddingTop(2).setPaddingBottom(4).setPaddingLeft(0).setPaddingRight(0);
+  var p = cell.getChild(0).asParagraph();
+  p.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+  var t = p.editAsText();
+  t.setFontFamily('Arial').setFontSize(10.5).setBold(true);
+  try {
+    var pDivider = body.appendParagraph('');
+    if (pDivider.setSpacingAfter) pDivider.setSpacingAfter(4);
+    if (pDivider.setSpacingBefore) pDivider.setSpacingBefore(0);
+  } catch (e) {}
+}
+
 function appendAnnex1_(body) {
+  appendInstitutionalHeaderTemplate_(body);
   var pTop = body.appendParagraph('Anexo 1: Registro de la observación de clase.');
   pTop.setFontFamily('Arial').setFontSize(9.5).setBold(true);
 
@@ -145,6 +165,7 @@ function appendAnnex1_(body) {
 }
 
 function appendAnnex2_(body) {
+  appendInstitutionalHeaderTemplate_(body);
   var pTop = body.appendParagraph('Anexo 2: ficha de observación de clase.');
   pTop.setFontFamily('Arial').setFontSize(9.5).setBold(true);
 
@@ -241,6 +262,7 @@ function appendAnnex2_(body) {
 }
 
 function appendAnnex3_(body) {
+  appendInstitutionalHeaderTemplate_(body);
   var pTop = body.appendParagraph('Anexo 3: Rúbrica para la ficha de observación de clase:');
   pTop.setFontFamily('Arial').setFontSize(9.5).setBold(true);
 
@@ -269,6 +291,7 @@ function appendAnnex3_(body) {
 }
 
 function appendAnnex5_(body) {
+  appendInstitutionalHeaderTemplate_(body);
   var pTop = body.appendParagraph('Anexo 5: Registro para la reflexión pedagógica.');
   pTop.setFontFamily('Arial').setFontSize(9.5).setBold(true);
 

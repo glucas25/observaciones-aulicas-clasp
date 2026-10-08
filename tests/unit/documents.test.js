@@ -49,3 +49,181 @@ test('DocumentService reutiliza documento existente de Drive cuando force es fal
   assert.equal(result.drive_file_id,'file-drive-123');
   assert.equal(result.url,'https://drive.google.com/file/d/file-drive-123/view');
 });
+
+test('DocsGateway.parseDriveFileId extrae el ID de diversos formatos de enlace de Drive',()=>{
+  const parse=context.DocsGateway.parseDriveFileId;
+  assert.equal(parse('https://drive.google.com/file/d/1AbC_123-XYZ9876543210/view?usp=sharing'),'1AbC_123-XYZ9876543210');
+  assert.equal(parse('https://drive.google.com/file/d/1AbC_123-XYZ9876543210/view'),'1AbC_123-XYZ9876543210');
+  assert.equal(parse('https://drive.google.com/open?id=1AbC_123-XYZ9876543210'),'1AbC_123-XYZ9876543210');
+  assert.equal(parse('https://drive.google.com/uc?export=download&id=1AbC_123-XYZ9876543210'),'1AbC_123-XYZ9876543210');
+  assert.equal(parse('1AbC_123-XYZ9876543210'),'1AbC_123-XYZ9876543210');
+  assert.equal(parse('   https://drive.google.com/file/d/FILE_ID_12345/edit   '),'FILE_ID_12345');
+  assert.equal(parse(''),'');
+  assert.equal(parse(null),'');
+});
+
+test('DocsGateway.getLogoBlob utiliza caché en memoria y CacheService para evitar múltiples llamadas a Drive',()=>{
+  let driveFetchCount = 0;
+  const mockCacheStore = {};
+  const logoContext = {
+    console: { warn: () => {} },
+    Utilities: {
+      base64Encode: (bytes) => Buffer.from(bytes).toString('base64'),
+      base64Decode: (str) => Buffer.from(str, 'base64'),
+      newBlob: (bytes, mime, name) => ({
+        getBytes: () => bytes,
+        getContentType: () => mime,
+        getName: () => name,
+        isBlob: true
+      })
+    },
+    CacheService: {
+      getScriptCache: () => ({
+        get: (k) => mockCacheStore[k] || null,
+        put: (k, v) => { mockCacheStore[k] = v; },
+        remove: (k) => { delete mockCacheStore[k]; }
+      })
+    },
+    DriveApp: {
+      getFileById: (id) => {
+        driveFetchCount++;
+        return {
+          getBlob: () => ({
+            getBytes: () => Buffer.from('fake-image-bytes'),
+            getContentType: () => 'image/png',
+            getName: () => 'logo.png',
+            isBlob: true
+          })
+        };
+      }
+    }
+  };
+
+  vm.createContext(logoContext);
+  vm.runInContext(fs.readFileSync(path.resolve(__dirname,'../../src/gateways/DocsGateway.gs'),'utf8'), logoContext);
+
+  // 1ra llamada: consulta DriveApp y guarda en memoria + CacheService
+  const blob1 = logoContext.DocsGateway.getLogoBlob('file-logo-1');
+  assert.equal(driveFetchCount, 1);
+  assert.ok(blob1 && blob1.isBlob);
+  assert.ok(mockCacheStore['LOGO_file-logo-1']);
+
+  // 2da llamada: responde desde memoria de ejecución (DriveApp no incrementa)
+  const blob2 = logoContext.DocsGateway.getLogoBlob('file-logo-1');
+  assert.equal(driveFetchCount, 1);
+  assert.equal(blob1, blob2);
+
+  // Limpiar memoria: debe responder desde CacheService sin consultar DriveApp
+  logoContext.DocsGateway.clearLogoCache();
+  const blob3 = logoContext.DocsGateway.getLogoBlob('file-logo-1');
+  assert.equal(driveFetchCount, 1); // ¡Aún 1! Lo tomó de CacheService
+  assert.ok(blob3 && blob3.isBlob);
+
+  // Invalidación total
+  logoContext.DocsGateway.clearLogoCache('file-logo-1');
+  assert.equal(mockCacheStore['LOGO_file-logo-1'], undefined);
+  const blob4 = logoContext.DocsGateway.getLogoBlob('file-logo-1');
+  assert.equal(driveFetchCount, 2); // Ahora sí volvió a DriveApp
+  assert.ok(blob4 && blob4.isBlob);
+});
+
+test('DocsGateway.appendInstitutionalHeader renderiza tabla con logo y texto institucional',()=>{
+  function createMockBody() {
+    let createdTable = null;
+    return {
+      appendTable: () => {
+        const rows = [];
+        const table = {
+          setBorderColor: () => table,
+          setBorderWidth: () => table,
+          appendTableRow: () => {
+            const cells = [];
+            const row = {
+              appendTableCell: () => {
+                const paragraphMock = {
+                  setText: (t) => { textContent.push(t); return paragraphMock; },
+                  setFontFamily: () => paragraphMock,
+                  setFontSize: () => paragraphMock,
+                  setBold: () => paragraphMock,
+                  setForegroundColor: () => paragraphMock,
+                  setAlignment: () => paragraphMock
+                };
+                const children = [{
+                  getType: () => 1, // PARAGRAPH
+                  asParagraph: () => paragraphMock,
+                  asText: () => ({ getText: () => '' })
+                }];
+                let cellWidth = 0;
+                const cell = {
+                  setPaddingTop: () => cell,
+                  setPaddingBottom: () => cell,
+                  setPaddingLeft: () => cell,
+                  setPaddingRight: () => cell,
+                  setWidth: (w) => { cellWidth = w; return cell; },
+                  getWidth: () => cellWidth,
+                  getNumChildren: () => children.length,
+                  getChild: (i) => children[i],
+                  appendImage: (blob) => ({
+                    getWidth: () => 300,
+                    getHeight: () => 150,
+                    setWidth: () => {},
+                    setHeight: () => {}
+                  }),
+                  appendParagraph: (txt) => {
+                    textContent.push(txt);
+                    return paragraphMock;
+                  }
+                };
+                cells.push(cell);
+                return cell;
+              },
+              getCells: () => cells
+            };
+            rows.push(row);
+            return row;
+          },
+          getRows: () => rows
+        };
+        createdTable = table;
+        return table;
+      },
+      appendParagraph: () => ({
+        setSpacingAfter: () => {},
+        setSpacingBefore: () => {}
+      }),
+      getTable: () => createdTable
+    };
+  }
+
+  const textContent = [];
+  const bodyWithLogo = createMockBody();
+  const snapshot = {
+    institutionNameSnapshot: 'Unidad Educativa Juan León Mera',
+    district: '09D01',
+    circuit: '09D01C01',
+    zone: 'Zona 8'
+  };
+
+  context.DocumentApp = {
+    ElementType: { PARAGRAPH: 1 },
+    HorizontalAlignment: { CENTER: 1 }
+  };
+
+  // Con logo
+  context.DocsGateway.appendInstitutionalHeader(bodyWithLogo, snapshot, { fakeBlob: true });
+  const table = bodyWithLogo.getTable();
+  const row = table.getRows()[0];
+  assert.equal(row.getCells().length, 2);
+  assert.equal(row.getCells()[0].getWidth(), 105);
+  assert.equal(row.getCells()[1].getWidth(), 435);
+  assert.ok(textContent.includes('UNIDAD EDUCATIVA JUAN LEÓN MERA'));
+
+  // Sin logo: tabla de 1 sola columna de 540pt
+  const bodyWithoutLogo = createMockBody();
+  context.DocsGateway.appendInstitutionalHeader(bodyWithoutLogo, snapshot, null);
+  const tableNoLogo = bodyWithoutLogo.getTable();
+  const rowNoLogo = tableNoLogo.getRows()[0];
+  assert.equal(rowNoLogo.getCells().length, 1);
+  assert.equal(rowNoLogo.getCells()[0].getWidth(), 540);
+});
+

@@ -19,7 +19,9 @@ var SheetSchema = (function () {
       'default_shift',
       'active',
       'created_at',
-      'updated_at'
+      'updated_at',
+      'logo_drive_id',
+      'logo_drive_url'
     ],
     USERS: ['user_id',
       'email',
@@ -132,7 +134,8 @@ var SheetSchema = (function () {
       'annul_reason',
       'evaluator_name_snapshot',
       'co_evaluator_user_id',
-      'co_evaluator_name_snapshot'
+      'co_evaluator_name_snapshot',
+      'institution_logo_drive_id'
     ],
     VISIT_GENERAL_RESPONSES: ['response_id',
       'visit_id',

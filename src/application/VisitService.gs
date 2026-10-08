@@ -30,7 +30,8 @@ var VisitService = (function () {
     reviewedByHuman: 'reviewed_by_human',
     evaluatorNameSnapshot: 'evaluator_name_snapshot',
     coEvaluatorUserId: 'co_evaluator_user_id',
-    coEvaluatorNameSnapshot: 'co_evaluator_name_snapshot'
+    coEvaluatorNameSnapshot: 'co_evaluator_name_snapshot',
+    institutionLogoDriveId: 'institution_logo_drive_id'
   };
   function toCamel_(row) {
     var reverse = {};
@@ -132,6 +133,7 @@ var VisitService = (function () {
         teacher_name_snapshot: teacher.display_name || teacher.full_name, institution_name_snapshot: institution.name, location: institution.location, zone: institution.zone,
         district: institution.district, circuit: institution.circuit, institution_address: institution.address, shift: dto.shift || institution.default_shift || 'Matutina',
         evaluator_name_snapshot: ev1Name, co_evaluator_user_id: coId, co_evaluator_name_snapshot: coName,
+        institution_logo_drive_id: institution.logo_drive_id || institution.logo_file_id || '',
         ai_used: false, reviewed_by_human: false, created_at: now, created_by: actor.user_id, updated_at: now, updated_by: actor.user_id
       });
       SheetsRepository.append('VISITS', row);
