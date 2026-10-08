@@ -209,8 +209,8 @@ var VisitService = (function () {
       var isObserver = Auth.isObservedTeacher ? Auth.isObservedTeacher(actor, current) : false;
       var canEdit = Auth.canEditVisit ? Auth.canEditVisit(actor, current) : false;
       if (!isObserver && !canEdit) throw AppErrors.forbidden('No tiene permiso para editar este compromiso.');
-      if (current.status !== VisitState.values.REVIEW && !canEdit) {
-        throw AppErrors.validation('Solo se puede registrar el compromiso mientras la evaluación esté En Revisión.');
+      if ([VisitState.values.DRAFT, VisitState.values.REVIEW, VisitState.values.REOPENED].indexOf(current.status) < 0) {
+        throw AppErrors.validation('Solo se puede registrar el compromiso mientras la evaluación esté en proceso o revisión.');
       }
       if (expectedVersion != null && Number(current.row_version) !== Number(expectedVersion)) throw AppErrors.conflict();
       var text = Validation.text(commitment, 5000);

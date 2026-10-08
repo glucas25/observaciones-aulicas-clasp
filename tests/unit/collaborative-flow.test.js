@@ -72,6 +72,12 @@ test('identifica correctamente al docente observado',()=>{
   assert.equal(context.Auth.isObservedTeacher(evaluator, visitInReview), false);
 });
 
+test('identifica al docente observado incluso con cargos en parentesis o nombres ordenados',()=>{
+  const userWithPosition = {user_id:'usr-99',display_name:'LUCAS AVILA GABRIEL EDUARDO (Docente)',email:'lucas@example.com',role:'TEACHER'};
+  const visitWithSnapshot = {teacher_id:'other-id',teacher_name_snapshot:'Gabriel Eduardo Lucas Avila',status:'IN_REVIEW'};
+  assert.equal(context.Auth.isObservedTeacher(userWithPosition, visitWithSnapshot), true);
+});
+
 test('el evaluador mantiene acceso total en borrador y revision',()=>{
   assert.equal(context.Auth.canViewVisit(evaluator, visitDraft), true);
   assert.equal(context.Auth.canViewVisit(evaluator, visitInReview), true);
@@ -79,3 +85,4 @@ test('el evaluador mantiene acceso total en borrador y revision',()=>{
   assert.equal(context.Auth.canEditVisit(evaluator, visitInReview), true);
   assert.equal(context.Auth.canEditVisit(observedTeacherUser, visitInReview), false, 'El docente observado edita via saveTeacherCommitment, no sobreescribe la visita completa');
 });
+

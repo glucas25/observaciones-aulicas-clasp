@@ -22,20 +22,46 @@ var Auth = (function () {
     if (!has) throw AppErrors.forbidden();
     return user;
   }
+  function cleanName_(s) {
+    return String(s || '').replace(/\s*\([^)]*\)\s*$/, '').trim().toLowerCase();
+  }
+  function namesMatch_(a, b) {
+    var ca = cleanName_(a), cb = cleanName_(b);
+    if (!ca || !cb) return false;
+    if (ca === cb) return true;
+    if (ca.indexOf(cb) >= 0 || cb.indexOf(ca) >= 0) return true;
+    var wa = ca.split(/\s+/).sort().join(' '), wb = cb.split(/\s+/).sort().join(' ');
+    return wa === wb;
+  }
   function teacherForUser(user) {
+    if (!user) return null;
     var email = String(user && user.email || '').trim().toLowerCase();
-    if (!email) return null;
     return SheetsRepository.filter('TEACHERS', function (teacher) {
-      return (String(teacher.email || '').trim().toLowerCase() === email || (teacher.user_id && String(teacher.user_id) === String(user.user_id))) && String(teacher.active).toLowerCase() !== 'false';
+      if (String(teacher.active).toLowerCase() === 'false') return false;
+      var tchEmail = String(teacher.email || '').trim().toLowerCase();
+      var tchUserId = teacher.user_id ? String(teacher.user_id) : '';
+      if (email && tchEmail === email) return true;
+      if (user.user_id && tchUserId === String(user.user_id)) return true;
+      if (namesMatch_(user.display_name, teacher.full_name)) return true;
+      return false;
     })[0] || null;
   }
   function isReceivedVisit_(user, visit) {
+    if (!user || !visit) return false;
     var teacher = teacherForUser(user);
-    var tchId = teacher ? String(teacher.teacher_id) : '';
-    return (tchId && String(visit.teacher_id) === tchId) || (user.user_id && String(visit.teacher_id) === String(user.user_id));
+    if (teacher) {
+      var tchId = String(teacher.teacher_id || '');
+      var tchUid = String(teacher.user_id || '');
+      var vTchId = String(visit.teacher_id || '');
+      if (tchId && vTchId === tchId) return true;
+      if (tchUid && vTchId === tchUid) return true;
+    }
+    if (user.user_id && String(visit.teacher_id) === String(user.user_id)) return true;
+    if (namesMatch_(user.display_name, visit.teacher_name_snapshot)) return true;
+    return false;
   }
   function isVisibleToTeacher_(visit) {
-    return ['IN_REVIEW', 'FINALIZED', 'DOCUMENTS_GENERATED'].indexOf(String(visit.status)) >= 0;
+    return ['IN_REVIEW', 'FINALIZED', 'DOCUMENTS_GENERATED', 'REOPENED'].indexOf(String(visit.status)) >= 0;
   }
   function canViewVisit(user, visit) {
     var userRoles = userRoles_(user);
