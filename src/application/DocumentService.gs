@@ -8,15 +8,28 @@ var DocumentService = (function () {
     var actor=Auth.current(),visit=VisitService.raw(visitId);Auth.assertVisit(actor,visit,false);if([VisitState.values.FINALIZED,VisitState.values.DOCUMENTS].indexOf(visit.status)<0)throw AppErrors.validation('Finalice la evaluación antes de generar documentos.');
     var config=AppConfig.validate(),snapshotRow=snapshot_(visitId,visit.data_version),idempotency=[visitId,visit.data_version,type,config.templateVersion,snapshotRow.snapshot_hash,force?Utilities.getUuid():''].join('|');
     var existing=SheetsRepository.filter('DOCUMENTS',function(d){return d.visit_id===visitId&&Number(d.data_version)===Number(visit.data_version)&&d.document_type===type&&d.template_version===config.templateVersion&&d.snapshot_hash===snapshotRow.snapshot_hash&&d.status==='READY'&&!d.superseded_at;})[0];
-    if(!force&&existing)return Object.assign({},existing,{url:DriveApp.getFileById(existing.drive_file_id).getUrl(),reused:true});
+    if(!force&&existing){
+      try{
+        var existingUrl=DriveApp.getFileById(existing.drive_file_id).getUrl();
+        if(visit.status===VisitState.values.FINALIZED){
+          visit.status=VisitState.values.DOCUMENTS;
+          visit.row_version=Number(visit.row_version)+1;
+          SheetsRepository.upsert('VISITS',['visit_id'],visit);
+        }
+        return Object.assign({},existing,{url:existingUrl,reused:true});
+      }catch(e){
+        existing.superseded_at=JsonUtil.now();
+        SheetsRepository.upsert('DOCUMENTS',['document_id'],existing);
+      }
+    }
     if(force&&existing){existing.superseded_at=JsonUtil.now();SheetsRepository.upsert('DOCUMENTS',['document_id'],existing);}
     var job=SheetsRepository.find('DOCUMENT_JOBS','idempotency_key',idempotency)||{job_id:Utilities.getUuid(),idempotency_key:idempotency,visit_id:visitId,data_version:visit.data_version,document_type:type,attempt_count:0,request_id:requestId};job.status='GENERATING';job.attempt_count=Number(job.attempt_count||0)+1;job.started_at=JsonUtil.now();job.last_error_code='';SheetsRepository.upsert('DOCUMENT_JOBS',['idempotency_key'],job);
     var name=visit.visit_code+'_v'+visit.data_version+'_'+type+'.pdf';
     try{var snapshot=JSON.parse(snapshotRow.snapshot_json),file=DocsGateway.render(config.templateIds[type],name,snapshot,type,config.tempFolderId,config.outputFolderId),record={document_id:Utilities.getUuid(),visit_id:visitId,data_version:visit.data_version,document_type:type,template_version:config.templateVersion,snapshot_hash:snapshotRow.snapshot_hash,status:'READY',drive_file_id:file.getId(),file_name:name,mime_type:MimeType.PDF,size_bytes:file.getSize(),generated_at:JsonUtil.now(),generated_by:actor.user_id,superseded_at:'',error_code:''};SheetsRepository.append('DOCUMENTS',record);job.status='READY';job.completed_at=JsonUtil.now();SheetsRepository.upsert('DOCUMENT_JOBS',['idempotency_key'],job);Audit.write(actor,'DOCUMENT_GENERATED','VISIT',visitId,visit.data_version,requestId,'SUCCESS','Documento generado',{type:type,snapshotHash:snapshotRow.snapshot_hash});
-      var readyTypes=SheetsRepository.filter('DOCUMENTS',function(d){return d.visit_id===visitId&&Number(d.data_version)===Number(visit.data_version)&&d.status==='READY'&&!d.superseded_at;}).map(function(d){return d.document_type;});if(TYPES.every(function(t){return readyTypes.indexOf(t)>=0;})){visit.status=VisitState.values.DOCUMENTS;visit.row_version=Number(visit.row_version)+1;SheetsRepository.upsert('VISITS',['visit_id'],visit);}return Object.assign({},record,{url:file.getUrl(),reused:false});
+      var readyTypes=SheetsRepository.filter('DOCUMENTS',function(d){return d.visit_id===visitId&&Number(d.data_version)===Number(visit.data_version)&&d.status==='READY'&&!d.superseded_at;}).map(function(d){return d.document_type;});if(readyTypes.indexOf('FULL_PACKAGE')>=0||TYPES.every(function(t){return readyTypes.indexOf(t)>=0;})){visit.status=VisitState.values.DOCUMENTS;visit.row_version=Number(visit.row_version)+1;SheetsRepository.upsert('VISITS',['visit_id'],visit);}return Object.assign({},record,{url:file.getUrl(),reused:false});
     }catch(e){job.status='ERROR';job.completed_at=JsonUtil.now();job.last_error_code=e.code||'DOCUMENT_ERROR';SheetsRepository.upsert('DOCUMENT_JOBS',['idempotency_key'],job);Audit.write(actor,'DOCUMENT_FAILED','VISIT',visitId,visit.data_version,requestId,'ERROR','Falló generación documental',{type:type,code:job.last_error_code});throw e.code?e:AppErrors.document();}
   }
-  function list(visitId){var actor=Auth.current(),visit=VisitService.raw(visitId);Auth.assertVisit(actor,visit,false);return SheetsRepository.filter('DOCUMENTS',function(d){return d.visit_id===visitId;}).map(function(d){if(d.drive_file_id)d.url=DriveApp.getFileById(d.drive_file_id).getUrl();return d;});}
+  function list(visitId){var actor=Auth.current(),visit=VisitService.raw(visitId);Auth.assertVisit(actor,visit,false);return SheetsRepository.filter('DOCUMENTS',function(d){return d.visit_id===visitId&&!d.superseded_at&&d.status==='READY';}).map(function(d){if(d.drive_file_id){try{d.url=DriveApp.getFileById(d.drive_file_id).getUrl();}catch(e){d.url='https://drive.google.com/file/d/'+d.drive_file_id+'/view';}}return d;});}
   return {generate:generate,list:list,types:TYPES};
 })();
 
