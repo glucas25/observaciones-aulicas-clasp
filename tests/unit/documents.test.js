@@ -227,3 +227,42 @@ test('DocsGateway.appendInstitutionalHeader renderiza tabla con logo y texto ins
   assert.equal(rowNoLogo.getCells()[0].getWidth(), 540);
 });
 
+test('DocsGateway.setupDocumentFooter configura el pie de página con la referencia del anexo y código',()=>{
+  let footerParagraphText = '';
+  const mockDoc = {
+    getFooter: () => null,
+    addFooter: () => ({
+      clear: () => {},
+      appendParagraph: (txt) => {
+        footerParagraphText = txt;
+        return {
+          setFontFamily: () => ({ setFontSize: () => ({ setForegroundColor: () => ({ setAlignment: () => {} }) }) })
+        };
+      }
+    })
+  };
+
+  context.DocumentApp.HorizontalAlignment.RIGHT = 2;
+
+  // Anexo 1
+  context.DocsGateway.setupDocumentFooter(mockDoc, { visitCode: 'VIS-2026-000001' }, 'ANNEX_1');
+  assert.equal(footerParagraphText, 'Anexo 1: Registro de la observación de clase · VIS-2026-000001');
+
+  // Anexo 2
+  context.DocsGateway.setupDocumentFooter(mockDoc, { visitCode: 'VIS-2026-000001' }, 'ANNEX_2');
+  assert.equal(footerParagraphText, 'Anexo 2: Ficha de observación de clase · VIS-2026-000001');
+
+  // Anexo 3
+  context.DocsGateway.setupDocumentFooter(mockDoc, { visitCode: 'VIS-2026-000001' }, 'ANNEX_3');
+  assert.equal(footerParagraphText, 'Anexo 3: Rúbrica para la ficha de observación de clase · VIS-2026-000001');
+
+  // Anexo 5
+  context.DocsGateway.setupDocumentFooter(mockDoc, { visitCode: 'VIS-2026-000001' }, 'ANNEX_5');
+  assert.equal(footerParagraphText, 'Anexo 5: Registro para la reflexión pedagógica · VIS-2026-000001');
+
+  // Full package
+  context.DocsGateway.setupDocumentFooter(mockDoc, { visitCode: 'VIS-2026-000001' }, 'FULL_PACKAGE');
+  assert.equal(footerParagraphText, 'Expediente Oficial de Observación de Clase (Anexos 1, 2, 3 y 5) · VIS-2026-000001');
+});
+
+

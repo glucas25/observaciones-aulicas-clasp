@@ -48,6 +48,7 @@ function createStarterTemplates(forceOverwrite) {
       body.setMarginRight(36);
     } catch (e) {}
     appendTemplateSection_(body, type);
+    setupDocumentFooterTemplate_(doc, type);
     doc.saveAndClose();
   });
   Audit.write(actor, 'STARTER_TEMPLATES_CREATED', 'CONFIG', '', '', 'setup', 'SUCCESS', 'Plantillas oficiales actualizadas');
@@ -109,10 +110,32 @@ function appendInstitutionalHeaderTemplate_(body) {
   } catch (e) {}
 }
 
+function setupDocumentFooterTemplate_(doc, type) {
+  var footerLabels = {
+    ANNEX_1: 'Anexo 1: Registro de la observación de clase',
+    ANNEX_2: 'Anexo 2: Ficha de observación de clase',
+    ANNEX_3: 'Anexo 3: Rúbrica para la ficha de observación de clase',
+    ANNEX_5: 'Anexo 5: Registro para la reflexión pedagógica',
+    FULL_PACKAGE: 'Expediente Oficial de Observación de Clase (Anexos 1, 2, 3 y 5)'
+  };
+  var label = footerLabels[type] || 'Sistema de Observación de Clase';
+  try {
+    var footer = (doc.getFooter && doc.getFooter()) || (doc.addFooter && doc.addFooter());
+    if (footer) {
+      if (footer.clear) footer.clear();
+      var p = footer.appendParagraph(label + ' · {{VISIT_ID}}');
+      if (p.setFontFamily) p.setFontFamily('Arial');
+      if (p.setFontSize) p.setFontSize(7.5);
+      if (p.setForegroundColor) p.setForegroundColor('#64748B');
+      if (p.setAlignment && typeof DocumentApp !== 'undefined' && DocumentApp.HorizontalAlignment) {
+        p.setAlignment(DocumentApp.HorizontalAlignment.RIGHT);
+      }
+    }
+  } catch (e) {}
+}
+
 function appendAnnex1_(body) {
   appendInstitutionalHeaderTemplate_(body);
-  var pTop = body.appendParagraph('Anexo 1: Registro de la observación de clase.');
-  pTop.setFontFamily('Arial').setFontSize(9.5).setBold(true);
 
   appendBannerBox_(body, 'REGISTRO DE LA OBSERVACIÓN DE CLASE');
 
@@ -166,8 +189,6 @@ function appendAnnex1_(body) {
 
 function appendAnnex2_(body) {
   appendInstitutionalHeaderTemplate_(body);
-  var pTop = body.appendParagraph('Anexo 2: ficha de observación de clase.');
-  pTop.setFontFamily('Arial').setFontSize(9.5).setBold(true);
 
   appendBannerBox_(body, 'FICHA DE OBSERVACIÓN DE CLASE', 'No. {{FORM_NUMBER}}');
 
@@ -263,8 +284,6 @@ function appendAnnex2_(body) {
 
 function appendAnnex3_(body) {
   appendInstitutionalHeaderTemplate_(body);
-  var pTop = body.appendParagraph('Anexo 3: Rúbrica para la ficha de observación de clase:');
-  pTop.setFontFamily('Arial').setFontSize(9.5).setBold(true);
 
   appendBannerBox_(body, 'RÚBRICA PARA LA FICHA DE OBSERVACIÓN DE CLASE');
 
@@ -292,8 +311,6 @@ function appendAnnex3_(body) {
 
 function appendAnnex5_(body) {
   appendInstitutionalHeaderTemplate_(body);
-  var pTop = body.appendParagraph('Anexo 5: Registro para la reflexión pedagógica.');
-  pTop.setFontFamily('Arial').setFontSize(9.5).setBold(true);
 
   appendBannerBox_(body, 'REGISTRO PARA LA REFLEXIÓN PEDAGÓGICA');
 

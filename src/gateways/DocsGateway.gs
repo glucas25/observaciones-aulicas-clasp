@@ -587,8 +587,6 @@ var DocsGateway = (function () {
 
   function buildAnnex1Section_(body, snapshot, logoBlob) {
     appendInstitutionalHeader_(body, snapshot, logoBlob);
-    var pTop = body.appendParagraph('Anexo 1: Registro de la observación de clase.');
-    pTop.setFontFamily('Arial').setFontSize(9.5).setBold(true);
 
     appendBannerBox_(body, 'REGISTRO DE LA OBSERVACIÓN DE CLASE');
 
@@ -646,8 +644,6 @@ var DocsGateway = (function () {
 
   function buildAnnex2Section_(body, snapshot, logoBlob) {
     appendInstitutionalHeader_(body, snapshot, logoBlob);
-    var pTop = body.appendParagraph('Anexo 2: ficha de observación de clase.');
-    pTop.setFontFamily('Arial').setFontSize(9.5).setBold(true);
 
     var fNum = snapshot.formNumber || snapshot.visitCode || '';
     appendBannerBox_(body, 'FICHA DE OBSERVACIÓN DE CLASE', fNum ? ('No. ' + fNum) : '');
@@ -751,8 +747,6 @@ var DocsGateway = (function () {
 
   function buildAnnex3Section_(body, snapshot, logoBlob) {
     appendInstitutionalHeader_(body, snapshot, logoBlob);
-    var pTop = body.appendParagraph('Anexo 3: Rúbrica para la ficha de observación de clase:');
-    pTop.setFontFamily('Arial').setFontSize(9.5).setBold(true);
 
     appendBannerBox_(body, 'RÚBRICA PARA LA FICHA DE OBSERVACIÓN DE CLASE');
 
@@ -784,8 +778,6 @@ var DocsGateway = (function () {
 
   function buildAnnex5Section_(body, snapshot, logoBlob) {
     appendInstitutionalHeader_(body, snapshot, logoBlob);
-    var pTop = body.appendParagraph('Anexo 5: Registro para la reflexión pedagógica.');
-    pTop.setFontFamily('Arial').setFontSize(9.5).setBold(true);
 
     appendBannerBox_(body, 'REGISTRO PARA LA REFLEXIÓN PEDAGÓGICA');
 
@@ -898,6 +890,36 @@ var DocsGateway = (function () {
     }
   }
 
+  function setupDocumentFooter_(doc, snapshot, type) {
+    if (!doc) return;
+    var footerLabels = {
+      ANNEX_1: 'Anexo 1: Registro de la observación de clase',
+      ANNEX_2: 'Anexo 2: Ficha de observación de clase',
+      ANNEX_3: 'Anexo 3: Rúbrica para la ficha de observación de clase',
+      ANNEX_5: 'Anexo 5: Registro para la reflexión pedagógica',
+      FULL_PACKAGE: 'Expediente Oficial de Observación de Clase (Anexos 1, 2, 3 y 5)'
+    };
+    var label = footerLabels[type] || 'Sistema de Observación de Clase';
+    var code = (snapshot && snapshot.visitCode) ? snapshot.visitCode : '';
+    var footerText = label + (code ? ' · ' + code : '');
+
+    try {
+      var footer = (doc.getFooter && doc.getFooter()) || (doc.addFooter && doc.addFooter());
+      if (footer) {
+        if (footer.clear) footer.clear();
+        var p = footer.appendParagraph(footerText);
+        if (p.setFontFamily) p.setFontFamily('Arial');
+        if (p.setFontSize) p.setFontSize(7.5);
+        if (p.setForegroundColor) p.setForegroundColor('#64748B');
+        if (p.setAlignment && typeof DocumentApp !== 'undefined' && DocumentApp.HorizontalAlignment) {
+          p.setAlignment(DocumentApp.HorizontalAlignment.RIGHT);
+        }
+      }
+    } catch (e) {
+      console.warn('No se pudo configurar el pie de página: ' + e.message);
+    }
+  }
+
   function render(templateId, outputName, snapshot, type, tempFolderId, outputFolderId) {
     if (!templateId) throw AppErrors.document('No se configuró la plantilla para ' + type + '.');
     var copy = DriveApp.getFileById(templateId).makeCopy(outputName + '-TEMP', DriveApp.getFolderById(tempFolderId));
@@ -924,6 +946,8 @@ var DocsGateway = (function () {
       }
     }
 
+    setupDocumentFooter_(doc, snapshot, type);
+
     doc.saveAndClose();
     var blob = copy.getAs(MimeType.PDF).setName(outputName);
     var file = DriveApp.getFolderById(outputFolderId).createFile(blob);
@@ -938,6 +962,7 @@ var DocsGateway = (function () {
     getLogoBlob: getLogoBlob_,
     clearLogoCache: clearLogoCache_,
     resolveInstitutionLogoId: resolveInstitutionLogoId_,
-    appendInstitutionalHeader: appendInstitutionalHeader_
+    appendInstitutionalHeader: appendInstitutionalHeader_,
+    setupDocumentFooter: setupDocumentFooter_
   };
 })();
