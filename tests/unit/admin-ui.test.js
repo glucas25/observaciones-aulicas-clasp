@@ -27,6 +27,17 @@ test('incluye campo para configurar el logo institucional desde enlace de Drive'
   assert.match(source,/logoDriveUrl:\s*\$\('#i-logo'\)\?\.value/);
 });
 
+test('el encabezado del dashboard incluye contenedor de institución y estilo saas',()=>{
+  const indexHtml = fs.readFileSync(path.resolve(__dirname,'../../src/ui/Index.html'),'utf8');
+  const stylesHtml = fs.readFileSync(path.resolve(__dirname,'../../src/ui/Styles.html'),'utf8');
+  assert.match(indexHtml, /id="header-institution"/);
+  assert.match(indexHtml, /class="header-institution-badge"/);
+  assert.match(stylesHtml, /header\{background:linear-gradient\(135deg,#0f172a 0%,#1e293b 100%\)/);
+  assert.match(stylesHtml, /\.header-institution-badge/);
+  assert.match(source, /function updateHeaderInstitution/);
+  assert.match(source, /updateHeaderInstitution\(\)/);
+});
+
 test('AdminService.saveInstitution procesa enlace de Drive y almacena logo_drive_id',()=>{
   const vm=require('node:vm');
   const writes=[];
